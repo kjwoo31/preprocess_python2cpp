@@ -22,7 +22,7 @@
     *   예: "빌드 에러를 수정해"라는 요청에 빌드 결과만 수정하고, 입력 소스 코드는 절대 변경하지 않는다.
     *   예: "함수 A를 수정해"라는 요청에 함수 B는 건드리지 않는다.
     *   예: "버그를 고쳐"라는 요청에 리팩토링이나 최적화를 추가하지 않는다.
-*   **버전 관리 제약 (Version Control Restrictions):** `git commit` 명령어를 제외한 모든 git 명령어 사용을 금지한다. 사용자가 직접 버전 관리를 수행한다.
+*   **버전 관리 제약 (Version Control Restrictions):** `git status`, `git diff`, `git commit` 명령어를 제외한 모든 git 명령어 사용을 금지한다. 사용자가 직접 버전 관리를 수행한다.
 
 ## 2. 핵심 코딩 원칙 (Core Coding Principles)
 

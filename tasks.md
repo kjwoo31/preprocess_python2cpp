@@ -42,6 +42,17 @@
 - [ ] Morphological operations (erode, dilate)
 - [ ] Full bilateral filter implementation
 
+### 🔵 P2.5: Declarative Function Mapping Configuration (Refactoring)
+
+**Goal**: Move hardcoded function mappings (in `database.py`) to an external configuration file (YAML/JSON) to make adding new rules more intuitive and data-driven.
+
+**Tasks**:
+- [ ] Design YAML/JSON schema for function/constant mappings
+- [ ] Migrate hardcoded mappings (OpenCV, NumPy, Librosa) to config files
+- [ ] Refactor `MappingDatabase` to load from config
+- [ ] Add schema validation and documentation
+- [ ] **Support N:M mapping (Complex Patterns)**: Allow one Python function to map to multiple C++ statements (e.g., `cv2.split` -> `std::vector<cv::Mat> ch; cv::split(src, ch);`)
+
 ### 🟢 P3: Advanced Features
 
 **Control Flow Support**:
