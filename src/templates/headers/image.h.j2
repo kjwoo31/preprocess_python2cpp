@@ -14,6 +14,10 @@
 #include <fstream>
 #include <stdexcept>
 
+// Use static inline for STB functions to avoid multiple definition errors
+#define STBI_STATIC
+#define STB_IMAGE_STATIC
+#define STB_IMAGE_WRITE_STATIC
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image.h"
@@ -178,14 +182,33 @@ inline Image imread_ppm(const std::string& path) {
 }
 
 // Main image loader (auto-detects format)
-inline Image imread(const std::string& path) {
+inline Image imread(const std::string& path, int mode = 1) {
+    // mode: 0 = grayscale, 1 = color (default)
     std::string ext = get_extension(path);
 
+    Image img;
     if (ext == ".ppm" || ext == ".pgm") {
-        return imread_ppm(path);
+        img = imread_ppm(path);
     } else {
-        return imread_stb(path);
+        img = imread_stb(path);
     }
+
+    // Convert to grayscale if mode == 0
+    if (mode == 0 && img.channels == 3) {
+        Image gray(img.height, img.width, 1);
+        for (int y = 0; y < img.height; ++y) {
+            for (int x = 0; x < img.width; ++x) {
+                // BGR to grayscale: 0.299*R + 0.587*G + 0.114*B
+                uint8_t b = img.at(y, x, 0);
+                uint8_t g = img.at(y, x, 1);
+                uint8_t r = img.at(y, x, 2);
+                gray.at(y, x, 0) = static_cast<uint8_t>(0.114 * b + 0.587 * g + 0.299 * r);
+            }
+        }
+        return gray;
+    }
+
+    return img;
 }
 
 // Image resize (bilinear interpolation - matches OpenCV default)
@@ -398,6 +421,44 @@ inline Image& Image::operator=(const ImageF& other) {
     }
 
     return *this;
+}
+
+// Reshape for flattening (returns a copy with metadata change)
+inline ImageF reshape(const ImageF& src, int batch, int size) {
+    if (batch * size != src.width * src.height * src.channels) {
+        throw std::runtime_error("Reshape dimensions don't match total size");
+    }
+
+    ImageF dst(batch, size, 1);
+    std::copy(src.data.begin(), src.data.end(), dst.data.begin());
+    return dst;
+}
+
+inline Image reshape(const Image& src, int batch, int size) {
+    if (batch * size != src.width * src.height * src.channels) {
+        throw std::runtime_error("Reshape dimensions don't match total size");
+    }
+
+    Image dst(batch, size, 1);
+    std::copy(src.data.begin(), src.data.end(), dst.data.begin());
+    return dst;
+}
+
+// Array/Vector operations for NumPy compatibility
+inline int argmax(const std::vector<float>& arr) {
+    return std::distance(arr.begin(), std::max_element(arr.begin(), arr.end()));
+}
+
+inline int argmin(const std::vector<float>& arr) {
+    return std::distance(arr.begin(), std::min_element(arr.begin(), arr.end()));
+}
+
+inline float max(const std::vector<float>& arr) {
+    return *std::max_element(arr.begin(), arr.end());
+}
+
+inline float min(const std::vector<float>& arr) {
+    return *std::min_element(arr.begin(), arr.end());
 }
 
 } // namespace img

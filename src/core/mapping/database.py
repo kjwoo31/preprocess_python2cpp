@@ -32,6 +32,23 @@ class FunctionMapping:
     notes: str = ""
 
 
+@dataclass
+class ConstantMapping:
+    """
+    Represents a mapping from Python constant to C++ constant.
+
+    Attributes:
+        python_lib: Python library name (e.g., 'cv2', 'numpy')
+        python_const: Python constant name (e.g., 'IMREAD_GRAYSCALE')
+        cpp_value: C++ constant value
+        notes: Additional notes about the mapping
+    """
+    python_lib: str
+    python_const: str
+    cpp_value: str
+    notes: str = ""
+
+
 class MappingDatabase:
     """
     Database of Python-to-C++ function mappings.
@@ -48,6 +65,7 @@ class MappingDatabase:
             auto_load_learned: If True, automatically load learned_mappings.json
         """
         self.mappings: Dict[str, FunctionMapping] = {}
+        self.constants: Dict[str, ConstantMapping] = {}
         self._initialize_default_mappings()
 
         # Auto-load learned mappings if available
@@ -57,6 +75,7 @@ class MappingDatabase:
     def _initialize_default_mappings(self):
         """Initialize the database with common mappings."""
         self._add_opencv_mappings()
+        self._add_opencv_constants()
         self._add_numpy_creation_mappings()
         self._add_numpy_method_mappings()
         self._add_numpy_function_mappings()
@@ -65,54 +84,94 @@ class MappingDatabase:
 
     def _add_opencv_mappings(self):
         """Add OpenCV function mappings."""
-        opencv_headers = ['<opencv2/opencv.hpp>']
-
-        # Functions that return cv::Mat
+        # Map to header-only image.h implementation
         self.add_mapping(FunctionMapping(
             python_lib='cv2',
             python_func='imread',
-            cpp_lib='cv',
+            cpp_lib='img',
             cpp_func='imread',
-            cpp_headers=opencv_headers,
-            notes='Reads image from file'
+            cpp_headers=[],
+            notes='Reads image from file (handled by image.h)'
         ))
 
-        # Functions with output parameter
         self.add_mapping(FunctionMapping(
             python_lib='cv2',
             python_func='resize',
-            cpp_lib='cv',
+            cpp_lib='img',
             cpp_func='resize',
-            cpp_headers=opencv_headers,
-            custom_template='cv::resize({src}, {dst}, cv::Size({width}, {height}))',
-            notes='Resizes image (output parameter style)'
+            cpp_headers=[],
+            notes='Resizes image (handled by image.h)'
         ))
 
         self.add_mapping(FunctionMapping(
             python_lib='cv2',
             python_func='cvtColor',
-            cpp_lib='cv',
-            cpp_func='cvtColor',
-            cpp_headers=opencv_headers,
-            notes='Converts color space'
+            cpp_lib='img',
+            cpp_func='cvtColor_BGR2RGB',
+            cpp_headers=[],
+            notes='Converts BGR to RGB (handled by image.h)'
         ))
 
         self.add_mapping(FunctionMapping(
             python_lib='cv2',
             python_func='GaussianBlur',
-            cpp_lib='cv',
+            cpp_lib='img',
             cpp_func='GaussianBlur',
-            cpp_headers=opencv_headers,
-            notes='Applies Gaussian blur'
+            cpp_headers=[],
+            notes='Applies Gaussian blur (handled by image.h)'
         ))
 
         self.add_mapping(FunctionMapping(
             python_lib='cv2',
             python_func='bilateralFilter',
-            cpp_lib='cv',
+            cpp_lib='img',
             cpp_func='bilateralFilter',
-            cpp_headers=opencv_headers,
-            notes='Applies bilateral filter for noise reduction'
+            cpp_headers=[],
+            notes='Applies bilateral filter (handled by image.h)'
+        ))
+
+    def _add_opencv_constants(self):
+        """Add OpenCV constant mappings."""
+        self.add_constant(ConstantMapping(
+            python_lib='cv2',
+            python_const='IMREAD_GRAYSCALE',
+            cpp_value='0',
+            notes='Grayscale image read mode'
+        ))
+
+        self.add_constant(ConstantMapping(
+            python_lib='cv2',
+            python_const='IMREAD_COLOR',
+            cpp_value='1',
+            notes='Color image read mode'
+        ))
+
+        self.add_constant(ConstantMapping(
+            python_lib='cv2',
+            python_const='IMREAD_UNCHANGED',
+            cpp_value='-1',
+            notes='Unchanged image read mode'
+        ))
+
+        self.add_constant(ConstantMapping(
+            python_lib='cv2',
+            python_const='COLOR_BGR2RGB',
+            cpp_value='COLOR_BGR2RGB',
+            notes='BGR to RGB color conversion code'
+        ))
+
+        self.add_constant(ConstantMapping(
+            python_lib='cv2',
+            python_const='COLOR_RGB2BGR',
+            cpp_value='COLOR_RGB2BGR',
+            notes='RGB to BGR color conversion code'
+        ))
+
+        self.add_constant(ConstantMapping(
+            python_lib='cv2',
+            python_const='COLOR_BGR2GRAY',
+            cpp_value='COLOR_BGR2GRAY',
+            notes='BGR to grayscale conversion code'
         ))
 
     def _add_numpy_creation_mappings(self):
@@ -151,24 +210,20 @@ class MappingDatabase:
     def _add_numpy_method_mappings(self):
         """Add NumPy array method mappings."""
         method_configs = [
-            ('astype', 'cv', 'convertTo', ['<opencv2/opencv.hpp>'], 'Converts array dtype'),
-            ('reshape', 'cv', 'reshape', ['<opencv2/opencv.hpp>'], 'Reshapes array'),
+            ('astype', 'img', 'astype_float32', [], 'Converts to float32 (handled by image.h)'),
+            ('reshape', 'img', 'reshape', [], 'Reshapes array (handled by image.h)'),
             ('transpose', 'Eigen', 'transpose', ['<Eigen/Dense>'], 'Transposes array'),
         ]
 
-        for python_func, cpp_lib, cpp_func, headers, notes in method_configs:
-            self.add_mapping(FunctionMapping(
-                python_lib='numpy.ndarray',
-                python_func=python_func,
-                cpp_lib=cpp_lib,
-                cpp_func=cpp_func,
-                cpp_headers=headers,
-                is_method=True,
-                notes=notes
-            ))
+        self._add_mappings_from_config('numpy.ndarray', method_configs, is_method=True)
 
     def _add_numpy_function_mappings(self):
         """Add NumPy function mappings."""
+        self._add_numpy_stat_mappings()
+        self._add_numpy_minmax_mappings()
+
+    def _add_numpy_stat_mappings(self):
+        """Add NumPy statistical function mappings."""
         self.add_mapping(FunctionMapping(
             python_lib='numpy',
             python_func='mean',
@@ -188,6 +243,17 @@ class MappingDatabase:
             notes='Computes standard deviation'
         ))
 
+    def _add_numpy_minmax_mappings(self):
+        """Add NumPy min/max function mappings."""
+        minmax_mappings = [
+            ('argmax', 'img', 'argmax', [], 'Returns index of maximum value'),
+            ('max', 'img', 'max', [], 'Returns maximum value'),
+            ('argmin', 'img', 'argmin', [], 'Returns index of minimum value'),
+            ('min', 'img', 'min', [], 'Returns minimum value'),
+        ]
+
+        self._add_mappings_from_config('numpy', minmax_mappings)
+
     def _add_librosa_mappings(self):
         """Add Librosa function mappings."""
         mappings = [
@@ -195,13 +261,19 @@ class MappingDatabase:
             ('stft', 'fftw', 'fftw_plan_dft_1d', ['<fftw3.h>'], 'Short-time Fourier transform'),
         ]
 
-        for python_func, cpp_lib, cpp_func, headers, notes in mappings:
+        self._add_mappings_from_config('librosa', mappings)
+
+    def _add_mappings_from_config(self, python_lib: str, configs: list,
+                                  is_method: bool = False) -> None:
+        """Add mappings from configuration list."""
+        for python_func, cpp_lib, cpp_func, headers, notes in configs:
             self.add_mapping(FunctionMapping(
-                python_lib='librosa',
+                python_lib=python_lib,
                 python_func=python_func,
                 cpp_lib=cpp_lib,
                 cpp_func=cpp_func,
                 cpp_headers=headers,
+                is_method=is_method,
                 notes=notes
             ))
 
@@ -225,6 +297,30 @@ class MappingDatabase:
         """
         key = f"{mapping.python_lib}.{mapping.python_func}"
         self.mappings[key] = mapping
+
+    def add_constant(self, constant: ConstantMapping):
+        """
+        Add a new constant mapping to the database.
+
+        Args:
+            constant: ConstantMapping to add
+        """
+        key = f"{constant.python_lib}.{constant.python_const}"
+        self.constants[key] = constant
+
+    def get_constant(self, python_lib: str, python_const: str) -> Optional[ConstantMapping]:
+        """
+        Get mapping for a Python constant.
+
+        Args:
+            python_lib: Python library name (e.g., 'cv2')
+            python_const: Python constant name (e.g., 'IMREAD_GRAYSCALE')
+
+        Returns:
+            ConstantMapping if found, None otherwise
+        """
+        key = f"{python_lib}.{python_const}"
+        return self.constants.get(key)
 
     def get_mapping(self, python_lib: str, python_func: str) -> Optional[FunctionMapping]:
         """

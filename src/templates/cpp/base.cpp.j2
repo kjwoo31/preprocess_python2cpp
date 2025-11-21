@@ -59,27 +59,23 @@ std::tuple<{% for output in pipeline.outputs %}{{ output.type_hint.base_type|cpp
     // LLM-generated code
     {{ llm_generated_code[op.id] }}
 {% elif op.op_type.value == 'function_call' %}
-{% if op.function == 'resize' and op.args|length >= 2 %}
-    // Special handling for resize with tuple argument
+{% set mapping = operation_mappings.get(op.id) %}
+{% set cpp_func = mapping.cpp_func if mapping else op.function %}
+{% set cpp_lib = mapping.cpp_lib if mapping else 'img' %}
 {% if op.output in declared_vars %}
-    {{ op.output }} = img::resize({{ op.args[0] }}, {{ op.args[1]|replace('(', '')|replace(')', '')|replace(',', ', ') }});
+    {{ op.output }} = {{ cpp_lib }}::{{ cpp_func }}({{ op.args|join(', ') }});
 {% else %}
-    auto {{ op.output }} = img::resize({{ op.args[0] }}, {{ op.args[1]|replace('(', '')|replace(')', '')|replace(',', ', ') }});
+    auto {{ op.output }} = {{ cpp_lib }}::{{ cpp_func }}({{ op.args|join(', ') }});
 {% set _ = declared_vars.append(op.output) %}
-{% endif %}
-{% else %}
-{% if op.output in declared_vars %}
-    {{ op.output }} = img::{{ op.function }}({{ op.args|join(', ') }});
-{% else %}
-    auto {{ op.output }} = img::{{ op.function }}({{ op.args|join(', ') }});
-{% set _ = declared_vars.append(op.output) %}
-{% endif %}
 {% endif %}
 {% elif op.op_type.value == 'method_call' %}
+{% set mapping = operation_mappings.get(op.id) %}
+{% set cpp_func = mapping.cpp_func if mapping else op.function %}
+{% set cpp_lib = mapping.cpp_lib if mapping else 'img' %}
 {% if op.output in declared_vars %}
-    {{ op.output }} = img::{{ op.function }}({{ op.source_object }}{% if op.args %}, {{ op.args|join(', ') }}{% endif %});
+    {{ op.output }} = {{ cpp_lib }}::{{ cpp_func }}({{ op.source_object }}{% if op.args %}, {{ op.args|join(', ') }}{% endif %});
 {% else %}
-    auto {{ op.output }} = img::{{ op.function }}({{ op.source_object }}{% if op.args %}, {{ op.args|join(', ') }}{% endif %});
+    auto {{ op.output }} = {{ cpp_lib }}::{{ cpp_func }}({{ op.source_object }}{% if op.args %}, {{ op.args|join(', ') }}{% endif %});
 {% set _ = declared_vars.append(op.output) %}
 {% endif %}
 {% elif op.op_type.value == 'arithmetic' %}
@@ -92,10 +88,11 @@ std::tuple<{% for output in pipeline.outputs %}{{ output.type_hint.base_type|cpp
 {% set _ = declared_vars.append(op.output) %}
 {% endif %}
 {% elif op.op_type.value == 'assignment' %}
+{% set source_var = op.args[0] + '_final' if op.args[0] in final_vars else op.args[0] %}
 {% if op.output in declared_vars %}
-    {{ op.output }} = {{ op.args[0] }};
+    {{ op.output }} = {{ source_var }};
 {% else %}
-    auto {{ op.output }} = {{ op.args[0] }};
+    auto {{ op.output }} = {{ source_var }};
 {% set _ = declared_vars.append(op.output) %}
 {% endif %}
 {% endif %}

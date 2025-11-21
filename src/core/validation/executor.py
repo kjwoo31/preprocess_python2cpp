@@ -38,15 +38,18 @@ class PythonRunner:
         Returns:
             Tuple of (result, execution_time_seconds)
         """
-        module = self._load_module_from_file(source_file)
-        func = self._get_function_from_module(module, function_name, source_file)
-
+        func = self._load_and_prepare_function(source_file, function_name)
         self._warmup_function(func, input_data)
 
         result, execution_time = self._measure_execution(func, input_data)
         self._save_result(result, function_name, "python")
 
         return result, execution_time
+
+    def _load_and_prepare_function(self, source_file: str, function_name: str):
+        """Load module and extract function."""
+        module = self._load_module_from_file(source_file)
+        return self._get_function_from_module(module, function_name, source_file)
 
     def _load_module_from_file(self, source_file: str):
         """Load Python module from file path."""
@@ -207,7 +210,11 @@ class CppRunner:
             return False, 0.0
 
         input_path = self._resolve_input_path(input_data)
+        return self._execute_and_measure(executable, input_path, project_path, iterations)
 
+    def _execute_and_measure(self, executable: Path, input_path: str,
+                            project_path: Path, iterations: int) -> Tuple[bool, float]:
+        """Execute binary and measure performance."""
         try:
             self._warmup_executable(executable, input_path, project_path)
 
@@ -216,7 +223,6 @@ class CppRunner:
             )
 
             self._copy_results_to_global_dir(project_path)
-
             return True, avg_time
 
         except subprocess.TimeoutExpired:
@@ -237,7 +243,7 @@ class CppRunner:
         """Execute warmup run of C++ executable."""
         subprocess.run(
             [str(executable.absolute()), input_path],
-            cwd=project_path,
+            cwd=project_path / "build",
             capture_output=True,
             timeout=10
         )
@@ -251,7 +257,7 @@ class CppRunner:
             start_time = time.perf_counter()
             result = subprocess.run(
                 [str(executable.absolute()), input_path],
-                cwd=project_path,
+                cwd=project_path / "build",
                 capture_output=True,
                 text=True,
                 timeout=10
@@ -269,7 +275,7 @@ class CppRunner:
         """Copy result files from project directory to global results directory."""
         import shutil
 
-        project_results = project_path / "results"
+        project_results = project_path / "build" / "results"
         if project_results.exists():
             for file in project_results.glob("*.npy"):
                 shutil.copy(file, self.results_dir / file.name)

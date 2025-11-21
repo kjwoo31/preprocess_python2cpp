@@ -1,0 +1,35 @@
+cmake_minimum_required(VERSION 3.14)
+project({{ project_name }})
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Source files
+set(SOURCES
+    main.cpp
+)
+
+# Check for component files
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/preprocess.cpp")
+    list(APPEND SOURCES preprocess.cpp)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/postprocess.cpp")
+    list(APPEND SOURCES postprocess.cpp)
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/inference.cpp")
+    list(APPEND SOURCES inference.cpp)
+endif()
+
+# Executable
+add_executable({{ project_name }} ${SOURCES})
+
+# Compiler flags
+target_compile_options({{ project_name }} PRIVATE
+    -Wall -Wextra -Wpedantic
+    $<$<CONFIG:Release>:-O3>
+)
+
+# Include current directory for headers
+target_include_directories({{ project_name }} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

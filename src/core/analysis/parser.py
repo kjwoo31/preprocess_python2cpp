@@ -44,7 +44,6 @@ class PythonASTParser:
         self.imports: List[ImportInfo] = []
         self.functions: List[FunctionInfo] = []
         self.global_assignments: Dict[str, ast.AST] = {}
-        self._current_function: Optional[str] = None
 
     def parse(self, source_code: str) -> ast.Module:
         """

@@ -31,7 +31,12 @@ def preprocess_image(image_path: str):
     # Convert to float and normalize
     img = img.astype(np.float32) / 255.0
 
-    return img
+    # @inference
+    # Placeholder for model inference
+    result = img
+
+    # Postprocessing (passthrough)
+    return result
 
 
 def preprocess_with_color_conversion(image_path: str):
@@ -48,13 +53,13 @@ def preprocess_with_color_conversion(image_path: str):
     img = cv2.imread(image_path)
 
     # Convert BGR to RGB
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
     # Resize to 256x256
-    img = cv2.resize(img, (256, 256))
+    img_resized = cv2.resize(img_rgb, (256, 256))
 
-    # Convert to float
-    img_float = img.astype(np.float32)
+    # Convert to float and normalize
+    img_float = img_resized.astype(np.float32) / 255.0
 
     return img_float
 

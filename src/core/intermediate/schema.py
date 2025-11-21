@@ -33,11 +33,11 @@ class TypeHint:
     is_const: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary"""
+        """Convert to dictionary."""
         return {k: v for k, v in asdict(self).items() if v is not None}
 
     def __str__(self) -> str:
-        """String representation for debugging"""
+        """String representation for debugging."""
         parts = [self.base_type]
         if self.dtype:
             parts.append(f"dtype={self.dtype}")
@@ -61,7 +61,7 @@ class IRInput:
     value: Optional[Any] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for JSON serialization"""
+        """Convert to dictionary for JSON serialization."""
         result = {
             'name': self.name,
             'type': str(self.type_hint)
@@ -102,7 +102,7 @@ class IROperation:
     operands: List[Any] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for JSON serialization"""
+        """Convert to dictionary for JSON serialization."""
         result = {
             'id': self.id,
             'type': self.op_type.value,
@@ -110,21 +110,27 @@ class IROperation:
             'output_type_hint': str(self.output_type_hint)
         }
 
-        # Add optional fields if present
+        self._add_optional_fields(result)
+        self._add_list_fields(result)
+
+        return result
+
+    def _add_optional_fields(self, result: Dict[str, Any]) -> None:
+        """Add optional fields if present."""
         optional_fields = ['source_lib', 'function', 'source_object', 'operator']
         for field_name in optional_fields:
             value = getattr(self, field_name)
             if value is not None:
                 result[field_name] = value
 
+    def _add_list_fields(self, result: Dict[str, Any]) -> None:
+        """Add list fields if non-empty."""
         if self.args:
             result['args'] = self.args
         if self.kwargs:
             result['kwargs'] = self.kwargs
         if self.operands:
             result['operands'] = self.operands
-
-        return result
 
 
 @dataclass
@@ -140,7 +146,7 @@ class IROutput:
     type_hint: TypeHint
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary"""
+        """Convert to dictionary."""
         return {
             'name': self.name,
             'type': str(self.type_hint)
@@ -166,7 +172,7 @@ class IRPipeline:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for JSON serialization"""
+        """Convert to dictionary for JSON serialization."""
         return {
             'pipeline_name': self.name,
             'inputs': [inp.to_dict() for inp in self.inputs],
@@ -176,39 +182,22 @@ class IRPipeline:
         }
 
     def to_json(self, indent: int = 2) -> str:
-        """Convert to JSON string"""
+        """Convert to JSON string."""
         return json.dumps(self.to_dict(), indent=indent)
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'IRPipeline':
-        """Create IRPipeline from dictionary"""
-        # This is a simplified version - full implementation would need
-        # proper deserialization of TypeHint objects
+        """Create IRPipeline from dictionary."""
         raise NotImplementedError("Deserialization not yet implemented")
 
     def validate(self) -> List[str]:
-        """
-        Validate the IR for consistency.
-
-        Returns:
-            List of validation errors (empty if valid)
-        """
+        """Validate the IR for consistency."""
         errors = []
-
-        # Check that all variable references are valid
         defined_vars = {inp.name for inp in self.inputs}
 
-        for i, op in enumerate(self.operations):
-            # Check arguments reference defined variables or are literals
-            for arg in op.args:
-                if isinstance(arg, str) and arg not in defined_vars:
-                    # Could be a literal string, but warn anyway
-                    pass
-
-            # Add output to defined variables
+        for op in self.operations:
             defined_vars.add(op.output)
 
-        # Check outputs reference defined variables
         for output in self.outputs:
             if output.name not in defined_vars:
                 errors.append(f"Output '{output.name}' not defined in operations")

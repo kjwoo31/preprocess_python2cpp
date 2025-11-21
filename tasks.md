@@ -1,16 +1,38 @@
 # Development Roadmap
 
-## Recent Achievements (v0.89)
+## Recent Achievements (v0.93)
 
-- ✅ stb_image.h integration (JPEG, PNG, BMP, TGA support)
-- ✅ Auto-detection: stb for JPEG/PNG, native for PPM/PGM
-- ✅ Type system corrected: Image (uint8) + ImageF (float32) classes
-- ✅ Resize bug fixed: OpenCV coordinate formula implementation
-- ✅ Validation: 82.80% exact match, 100% within 1% error
-- ✅ Performance report: Comprehensive testing of all examples
-- ✅ CLAUDE.md compliance: All functions under 50 lines
+- ✅ CLAUDE.md standards compliance (SRP, 50-line limit, type hints)
+- ✅ Code deduplication (~50 lines removed)
+- ✅ CLAUDE.md work completion guidelines added
+- ✅ Bug fix: type checking in list elements
+- ✅ Removed unused code (parser._current_function)
 
 ## Priority Tasks
+
+### 🔴 P1: Pipeline Separation & Multi-file Support ✅
+
+**Core Analysis**:
+- [x] `src/core/analysis/separator.py`: Split Pre/Inf/Post by `# @inference` comment
+- [x] `src/core/analysis/dependencies.py`: Recursive import resolution
+- [x] `src/core/analysis/tracer.py`: Execution path tracking with `sys.settrace`
+
+**Code Generation**:
+- [x] Update `generator.py`: `generate_pipeline()` method for multi-module output
+- [x] Template `pipeline_main.cpp.j2`: Orchestrate Pre → Inf → Post
+- [x] Template `inference_stub.cpp.j2`: Placeholder for inference block
+- [x] Template `component.h.j2` & `component.cpp.j2`: Component modules
+- [x] Template `pipeline_cmakelists.txt.j2`: Pipeline CMake config
+
+**CLI Updates**:
+- [x] Add `--pipeline` flag for split conversion mode
+- [x] Add `--recursive` flag for dependency resolution
+- [x] Change `--validate` to default true, add `--no-validate`
+- [x] Implement pipeline conversion workflow
+
+**Testing & Examples**:
+- [x] `tests/test_pipeline.py`: Pipeline separation tests
+- [x] `examples/pipeline_demo.py`: Image classification demo
 
 ### 🟡 P2: Image Processing Enhancements
 
@@ -35,11 +57,12 @@
 
 ## Known Limitations
 
-- Control flow: Limited if/else and loop support
-- LLM integration: Requires GCP Vertex AI access (optional)
-- Type inference: Sometimes uses `auto` instead of concrete types
-- Method chains: Limited support
-- Bilateral filter: Simplified stub implementation
+- **Control flow**: Limited if/else and loop support
+- **Complex operations**: Some Python operations (np.argmax) may not map perfectly
+- **LLM integration**: Requires GCP Vertex AI access (optional)
+- **Type inference**: Sometimes uses `auto` instead of concrete types
+- **Method chains**: Limited support
+- **Bilateral filter**: Simplified stub implementation
 
 ## Progress
 
@@ -49,15 +72,18 @@
 | Type Inference | ✅ Done | 85% |
 | IR Generation | ✅ Done | 85% |
 | Mapping Database | ✅ Done | 80% |
-| Code Generation | ✅ Done | 85% |
+| Code Generation | ✅ Done | 90% |
+| Pipeline Separation | ✅ Done | 100% |
+| Dependency Resolution | ✅ Done | 100% |
+| Execution Tracing | ✅ Done | 100% |
 | Header-Only Library | ✅ Done | 100% |
 | Build System | ✅ Done | 100% |
 | CLI | ✅ Done | 100% |
 | Validation | ✅ Done | 100% |
 | LLM Integration | ⚠️ Blocked | 50% |
 | Control Flow | ❌ Pending | 0% |
-| **Overall** | **~89%** | **89%** |
+| **Overall** | **~93%** | **93%** |
 
 ---
 
-**Last Updated**: 2025-11-20
+**Last Updated**: 2025-11-22 (v0.93)
