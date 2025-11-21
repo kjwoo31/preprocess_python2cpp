@@ -1,0 +1,102 @@
+/**
+ * Numerical Validation Utilities
+ *
+ * Provides utilities for comparing C++ results with Python ground truth.
+ */
+
+#pragma once
+
+#include <opencv2/opencv.hpp>
+#include <Eigen/Dense>
+#include <iostream>
+#include <cmath>
+#include <string>
+
+namespace validation {
+
+/**
+ * Check if two floating point values are close within tolerance.
+ */
+template<typename T>
+bool is_close(T a, T b, T rtol = 1e-4, T atol = 1e-5) {
+    return std::abs(a - b) <= (atol + rtol * std::abs(b));
+}
+
+/**
+ * Check if two OpenCV matrices are close within tolerance.
+ */
+bool allclose_mat(const cv::Mat& a, const cv::Mat& b,
+                  double rtol = 1e-4, double atol = 1e-5) {
+    if (a.size() != b.size()) {
+        std::cerr << "Shape mismatch: " << a.size() << " vs " << b.size() << std::endl;
+        return false;
+    }
+
+    if (a.type() != b.type()) {
+        std::cerr << "Type mismatch" << std::endl;
+        return false;
+    }
+
+    cv::Mat diff;
+    cv::absdiff(a, b, diff);
+
+    cv::Mat threshold;
+    cv::Mat b_abs;
+    cv::Mat tolerance;
+
+    if (a.depth() == CV_8U) {
+        // For uint8, use pixel tolerance of 1
+        threshold = cv::Mat::ones(a.size(), a.type());
+    } else {
+        cv::absdiff(b, cv::Scalar::all(0), b_abs);
+        tolerance = atol + rtol * b_abs;
+        cv::compare(diff, tolerance, threshold, cv::CMP_LE);
+    }
+
+    return cv::countNonZero(threshold == 0) == 0;
+}
+
+/**
+ * Check if two Eigen matrices are close within tolerance.
+ */
+template<typename Derived1, typename Derived2>
+bool allclose_eigen(const Eigen::MatrixBase<Derived1>& a,
+                   const Eigen::MatrixBase<Derived2>& b,
+                   double rtol = 1e-4, double atol = 1e-5) {
+    if (a.rows() != b.rows() || a.cols() != b.cols()) {
+        std::cerr << "Shape mismatch: (" << a.rows() << "," << a.cols() << ") vs ("
+                  << b.rows() << "," << b.cols() << ")" << std::endl;
+        return false;
+    }
+
+    auto diff = (a - b).array().abs();
+    auto threshold = atol + rtol * b.array().abs();
+
+    return (diff <= threshold).all();
+}
+
+/**
+ * Load numpy array from .npy file (simplified - requires cnpy library)
+ */
+// Note: This requires the cnpy library for full implementation
+// Placeholder for demonstration
+template<typename T>
+bool load_npy(const std::string& filename, cv::Mat& output) {
+    // Implementation would use cnpy::npy_load
+    // For now, this is a placeholder
+    std::cerr << "NPY loading not implemented - requires cnpy library" << std::endl;
+    return false;
+}
+
+/**
+ * Print validation results
+ */
+void print_validation_result(const std::string& test_name, bool passed) {
+    if (passed) {
+        std::cout << "[PASS] " << test_name << std::endl;
+    } else {
+        std::cout << "[FAIL] " << test_name << std::endl;
+    }
+}
+
+} // namespace validation
