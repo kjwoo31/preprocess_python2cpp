@@ -1,0 +1,88 @@
+# YAML Schema for Python-to-C++ Function and Constant Mappings
+# Version: 1.0
+
+# Function Mappings Section
+functions:
+  # Each mapping represents a Python function -> C++ translation
+  # Key format: "library.function_name"
+
+  # Simple 1:1 function mapping example
+  - python_lib: cv2                    # Python library name
+    python_func: imread                # Python function name
+    cpp_lib: img                       # C++ library/namespace
+    cpp_func: imread                   # C++ function name
+    cpp_headers: []                    # Required C++ headers (empty for header-only libs)
+    is_method: false                   # true if this is an object method
+    arg_mapping: null                  # Optional: argument remapping rules
+    custom_template: null              # Optional: custom code template for complex cases
+    statements: null                   # Optional: N:M mapping (multiple C++ statements)
+    inline_impl: null                  # Optional: reference to implementation in config/implementations/
+    notes: "Reads image from file (handled by image.h)"
+
+  # Complex N:M mapping example (one Python call -> multiple C++ statements)
+  - python_lib: cv2
+    python_func: split
+    cpp_lib: cv
+    cpp_func: split
+    cpp_headers: ["<opencv2/opencv.hpp>"]
+    is_method: false
+    statements:
+      - "std::vector<cv::Mat> {output};"
+      - "cv::split({input}, {output});"
+    notes: "Splits multi-channel image into separate channels"
+
+  # Custom template example
+  - python_lib: numpy
+    python_func: zeros
+    cpp_lib: Eigen
+    cpp_func: MatrixXf::Zero
+    cpp_headers: ["<Eigen/Dense>"]
+    is_method: false
+    custom_template: "Eigen::MatrixXf::Zero({rows}, {cols})"
+    notes: "Creates zero matrix with specified dimensions"
+
+  # Method mapping example
+  - python_lib: numpy.ndarray
+    python_func: reshape
+    cpp_lib: img
+    cpp_func: reshape
+    cpp_headers: []
+    is_method: true
+    notes: "Reshapes array (handled by image.h)"
+
+# Constant Mappings Section
+constants:
+  # Each mapping represents a Python constant -> C++ constant
+  - python_lib: cv2
+    python_const: IMREAD_GRAYSCALE
+    cpp_value: "0"
+    notes: "Grayscale image read mode"
+
+  - python_lib: cv2
+    python_const: COLOR_BGR2RGB
+    cpp_value: "COLOR_BGR2RGB"
+    notes: "BGR to RGB color conversion code"
+
+# Field Descriptions:
+#
+# python_lib: Python module/library name (e.g., 'cv2', 'numpy', 'numpy.ndarray')
+# python_func: Python function/method name
+# cpp_lib: C++ namespace or library prefix
+# cpp_func: C++ function/method name
+# cpp_headers: List of required C++ header files (use [] for header-only implementations)
+# is_method: Boolean indicating if this is called as object.method() vs function(object)
+# arg_mapping: Dict for argument reordering/renaming (null if direct mapping)
+# custom_template: String template with {placeholder} syntax for complex code generation
+# statements: List of C++ statements for N:M mapping (generates multiple lines from one Python call)
+# inline_impl: Reference to implementation snippet in config/implementations/*.yaml
+# notes: Human-readable documentation
+#
+# Priority of code generation (highest to lowest):
+# 1. inline_impl (if present, loads implementation from config/implementations/)
+# 2. statements (N:M mapping for multi-statement generation)
+# 3. custom_template (templated single expression)
+# 4. Standard 1:1 mapping (cpp_lib::cpp_func call)
+#
+# For constants:
+# python_const: Python constant name
+# cpp_value: C++ constant value or expression

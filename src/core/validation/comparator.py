@@ -2,7 +2,7 @@
 
 import numpy as np
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 
 class ResultComparator:
@@ -20,7 +20,7 @@ class ResultComparator:
         self.results_dir = Path(results_dir)
 
     def compare_outputs(self, function_name: str,
-                       rtol: float = 1e-4, atol: float = 1e-5) -> Dict[str, any]:
+                       rtol: float = 1e-4, atol: float = 1e-5) -> Dict[str, Any]:
         """
         Compare Python and C++ outputs.
 
@@ -40,8 +40,8 @@ class ResultComparator:
             return validation_error
 
         try:
-            python_result = np.load(python_file)
-            cpp_result = np.load(cpp_file)
+            python_result = np.load(python_file, allow_pickle=True)
+            cpp_result = np.load(cpp_file, allow_pickle=True)
 
             shape_error = self._check_shape_compatibility(python_result, cpp_result)
             if shape_error:
@@ -74,10 +74,51 @@ class ResultComparator:
             }
         return None
 
+    def _compare_structured_arrays(self, python_result: np.ndarray,
+                                   cpp_result: np.ndarray,
+                                   rtol: float, atol: float) -> dict:
+        """Compare structured arrays field by field."""
+        all_close = True
+        max_abs_diff = 0.0
+        mean_abs_diff = 0.0
+        total_elements = 0
+
+        for field in python_result.dtype.names:
+            py_field = python_result[field].astype(float)
+            cpp_field = cpp_result[field].astype(float)
+
+            abs_diff = np.abs(py_field - cpp_field)
+            max_abs_diff = max(max_abs_diff, float(np.max(abs_diff)))
+            mean_abs_diff += float(np.sum(abs_diff))
+            total_elements += abs_diff.size
+
+            if not np.allclose(py_field, cpp_field, rtol=rtol, atol=atol):
+                all_close = False
+
+        mean_abs_diff /= total_elements if total_elements > 0 else 1
+
+        return {
+            'success': True,
+            'is_close': all_close,
+            'dtype_match': False,  # Dtypes will differ (int64 vs int32)
+            'python_dtype': str(python_result.dtype),
+            'cpp_dtype': str(cpp_result.dtype),
+            'shape': python_result.shape,
+            'max_abs_diff': max_abs_diff,
+            'mean_abs_diff': mean_abs_diff,
+            'max_rel_diff': 0.0,
+            'mean_rel_diff': 0.0,
+            'match_percentage': 100.0 if all_close else 0.0,
+            'total_elements': total_elements
+        }
+
     def _compute_comparison_metrics(self, python_result: np.ndarray,
                                     cpp_result: np.ndarray,
                                     rtol: float, atol: float) -> dict:
         """Compute numerical comparison metrics."""
+        if python_result.dtype.names is not None:
+            return self._compare_structured_arrays(python_result, cpp_result, rtol, atol)
+
         abs_diff = np.abs(python_result - cpp_result)
         rel_diff = abs_diff / (np.abs(python_result) + 1e-10)
 
@@ -99,7 +140,7 @@ class ResultComparator:
             'total_elements': int(close_elements.size)
         }
 
-    def print_comparison(self, comparison: Dict[str, any],
+    def print_comparison(self, comparison: Dict[str, Any],
                         python_time: float, cpp_time: float):
         """
         Print formatted comparison results.

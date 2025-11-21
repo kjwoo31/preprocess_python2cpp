@@ -1,0 +1,209 @@
+# NumPy Function and Method Mappings
+# Maps NumPy operations to modular header-only implementations
+
+functions:
+  # Array Creation Functions
+  - python_lib: numpy
+    python_func: zeros
+    cpp_lib: Eigen
+    cpp_func: MatrixXf::Zero
+    cpp_headers: ["<Eigen/Dense>"]
+    is_method: false
+    custom_template: "Eigen::MatrixXf::Zero({rows}, {cols})"
+    notes: "Creates zero matrix"
+
+  - python_lib: numpy
+    python_func: ones
+    cpp_lib: Eigen
+    cpp_func: MatrixXf::Ones
+    cpp_headers: ["<Eigen/Dense>"]
+    is_method: false
+    custom_template: "Eigen::MatrixXf::Ones({rows}, {cols})"
+    notes: "Creates ones matrix"
+
+  - python_lib: numpy
+    python_func: array
+    cpp_lib: Eigen
+    cpp_func: Map
+    cpp_headers: ["<Eigen/Dense>"]
+    is_method: false
+    notes: "Creates array from data"
+
+  # Array Methods (numpy.ndarray methods)
+  - python_lib: numpy.ndarray
+    python_func: astype
+    cpp_lib: img
+    cpp_func: astype_float32
+    cpp_headers: []
+    is_method: true
+    inline_impl: "img_astype_float32"
+    notes: "Converts to float32"
+
+  # Standalone astype function (when called on result)
+  - python_lib: numpy
+    python_func: astype
+    cpp_lib: img
+    cpp_func: astype_float32
+    cpp_headers: ["img/convert.h"]
+    is_method: false
+    notes: "Standalone astype conversion"
+
+  - python_lib: numpy.ndarray
+    python_func: reshape
+    cpp_lib: img
+    cpp_func: reshape
+    cpp_headers: []
+    is_method: true
+    inline_impl: "img_reshape"
+    notes: "Reshapes array (modular: img/array.h)"
+
+  - python_lib: numpy
+    python_func: reshape
+    cpp_lib: img
+    cpp_func: reshape
+    cpp_headers: []
+    is_method: false
+    inline_impl: "img_reshape"
+    notes: "Reshapes array (standalone function)"
+
+  - python_lib: numpy.ndarray
+    python_func: transpose
+    cpp_lib: Eigen
+    cpp_func: transpose
+    cpp_headers: ["<Eigen/Dense>"]
+    is_method: true
+    notes: "Transposes array"
+
+  - python_lib: numpy
+    python_func: transpose
+    cpp_lib: Eigen
+    cpp_func: transpose
+    cpp_headers: ["<Eigen/Dense>"]
+    is_method: false
+    notes: "Transposes array (standalone function)"
+
+  # Statistical Functions
+  - python_lib: numpy
+    python_func: mean
+    cpp_lib: cv
+    cpp_func: mean
+    cpp_headers: ["<opencv2/opencv.hpp>"]
+    is_method: false
+    notes: "Computes mean"
+
+  - python_lib: numpy
+    python_func: std
+    cpp_lib: Eigen
+    cpp_func: mean
+    cpp_headers: ["<Eigen/Dense>", "<cmath>"]
+    is_method: false
+    custom_template: "std::sqrt(({array} - {array}.mean()).square().mean())"
+    notes: "Computes standard deviation"
+
+  # Min/Max Functions
+  - python_lib: numpy
+    python_func: argmax
+    cpp_lib: std
+    cpp_func: argmax_inline
+    cpp_headers: ["<algorithm>", "<vector>"]
+    is_method: false
+    statements:
+      - "auto {output} = std::distance({input}.begin(), std::max_element({input}.begin(), {input}.end()));"
+    notes: "Returns index of maximum value (inline implementation)"
+
+  - python_lib: numpy
+    python_func: max
+    cpp_lib: img
+    cpp_func: max
+    cpp_headers: ["img/stats.h"]
+    is_method: false
+    notes: "Returns maximum value"
+
+  - python_lib: numpy
+    python_func: argmin
+    cpp_lib: img
+    cpp_func: argmin
+    cpp_headers: ["img/stats.h"]
+    is_method: false
+    notes: "Returns index of minimum value"
+
+  - python_lib: numpy
+    python_func: min
+    cpp_lib: img
+    cpp_func: min
+    cpp_headers: ["img/stats.h"]
+    is_method: false
+    notes: "Returns minimum value"
+
+  # Arithmetic Operations
+  - python_lib: numpy
+    python_func: divide
+    cpp_lib: img
+    cpp_func: operator/
+    cpp_headers: []
+    is_method: false
+    inline_impl: "img_operator_div"
+    notes: "Element-wise division"
+
+  - python_lib: numpy
+    python_func: multiply
+    cpp_lib: img
+    cpp_func: operator*
+    cpp_headers: ["img/arithmetic.h"]
+    is_method: false
+    notes: "Element-wise multiplication"
+
+  - python_lib: numpy
+    python_func: add
+    cpp_lib: img
+    cpp_func: operator+
+    cpp_headers: ["img/arithmetic.h"]
+    is_method: false
+    notes: "Element-wise addition"
+
+  - python_lib: numpy
+    python_func: subtract
+    cpp_lib: img
+    cpp_func: operator-
+    cpp_headers: ["img/arithmetic.h"]
+    is_method: false
+    notes: "Element-wise subtraction"
+
+  # Data type conversion
+  - python_lib: numpy
+    python_func: float32
+    cpp_lib: img
+    cpp_func: astype_float32
+    cpp_headers: ["img/convert.h"]
+    is_method: false
+    notes: "Convert to float32 type"
+
+  - python_lib: numpy
+    python_func: uint8
+    cpp_lib: img
+    cpp_func: to_uint8
+    cpp_headers: ["img/convert.h"]
+    is_method: false
+    notes: "Convert to uint8 type"
+
+constants:
+  # NumPy data types
+  - python_lib: numpy
+    python_const: float32
+    cpp_value: "float"
+    notes: "32-bit floating point type"
+
+  - python_lib: numpy
+    python_const: uint8
+    cpp_value: "uint8_t"
+    notes: "8-bit unsigned integer type"
+
+  - python_lib: numpy
+    python_const: int32
+    cpp_value: "int32_t"
+    notes: "32-bit signed integer type"
+
+  - python_lib: numpy
+    python_const: float64
+    cpp_value: "double"
+    notes: "64-bit floating point type"

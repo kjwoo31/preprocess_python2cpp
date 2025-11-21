@@ -90,7 +90,7 @@ def _find_function_info(parser: PythonASTParser, func_name: str):
 
 
 def _build_type_context(tree: ast.Module, func_name: str,
-                       type_engine: TypeInferenceEngine) -> dict:
+                       type_engine: TypeInferenceEngine) -> dict[str, TypeHint]:
     """Build type context for function."""
     func_node = next(
         (node for node in tree.body
@@ -130,6 +130,14 @@ def _extract_operations_from_statement(stmt, type_context: dict,
             op = _create_assignment_operation(stmt.value, output_var, output_type, index)
             if op:
                 operations.append(op)
+    elif isinstance(stmt, ast.If):
+        op = _create_conditional_operation(stmt, type_context, index)
+        if op:
+            operations.append(op)
+    elif isinstance(stmt, (ast.For, ast.While)):
+        op = _create_loop_operation(stmt, type_context, index)
+        if op:
+            operations.append(op)
 
     return operations
 
@@ -208,6 +216,57 @@ def _create_simple_assignment(output_var: str, output_type: TypeHint,
         output=output_var,
         output_type_hint=output_type,
         args=[value]
+    )
+
+
+def _create_conditional_operation(if_stmt: ast.If, type_context: dict,
+                                   index: int) -> IROperation:
+    """Create conditional (if/else) operation."""
+    condition = ast.unparse(if_stmt.test)
+
+    true_ops = []
+    for i, stmt in enumerate(if_stmt.body):
+        ops = _extract_operations_from_statement(stmt, type_context, index * 1000 + i)
+        true_ops.extend(ops)
+
+    false_ops = []
+    for i, stmt in enumerate(if_stmt.orelse):
+        ops = _extract_operations_from_statement(stmt, type_context, index * 1000 + 100 + i)
+        false_ops.extend(ops)
+
+    return IROperation(
+        id=f"op_{index + 1}",
+        op_type=OperationType.CONDITIONAL,
+        output="",
+        output_type_hint=TypeHint('void'),
+        condition=condition,
+        true_branch=true_ops,
+        false_branch=false_ops
+    )
+
+
+def _create_loop_operation(loop_stmt, type_context: dict, index: int) -> IROperation:
+    """Create loop (for/while) operation."""
+    if isinstance(loop_stmt, ast.For):
+        loop_var = loop_stmt.target.id if isinstance(loop_stmt.target, ast.Name) else ""
+        iterable = ast.unparse(loop_stmt.iter)
+    else:
+        loop_var = ""
+        iterable = ast.unparse(loop_stmt.test)
+
+    loop_ops = []
+    for i, stmt in enumerate(loop_stmt.body):
+        ops = _extract_operations_from_statement(stmt, type_context, index * 1000 + i)
+        loop_ops.extend(ops)
+
+    return IROperation(
+        id=f"op_{index + 1}",
+        op_type=OperationType.LOOP,
+        output="",
+        output_type_hint=TypeHint('void'),
+        loop_var=loop_var,
+        iterable=iterable,
+        loop_body=loop_ops
     )
 
 
@@ -323,6 +382,10 @@ def _create_function_call_operation(call_node, output_var: str,
     if unwrapped_call is not call_node:
         return unwrapped_call
 
+    chained_call = _handle_method_chaining(call_node, output_var, output_type, index)
+    if chained_call:
+        return chained_call
+
     source_lib, function_name, source_object, op_type = _analyze_function_call_type(
         call_node.func
     )
@@ -336,6 +399,44 @@ def _create_function_call_operation(call_node, output_var: str,
     return _build_ir_operation(
         index, op_type, output_var, output_type, function_name,
         args, kwargs, source_lib, source_object
+    )
+
+
+def _handle_method_chaining(call_node, output_var: str, output_type: TypeHint,
+                             index: int) -> Optional[IROperation]:
+    """Handle chained method calls like a.method1().method2()."""
+    if not isinstance(call_node.func, ast.Attribute):
+        return None
+
+    if not isinstance(call_node.func.value, ast.Call):
+        return None
+
+    chain_parts = []
+    current = call_node
+
+    while isinstance(current, ast.Call) and isinstance(current.func, ast.Attribute):
+        method_name = current.func.attr
+        args = [ast.unparse(arg) for arg in current.args]
+        chain_parts.append((method_name, args))
+        current = current.func.value
+
+    if not chain_parts:
+        return None
+
+    base_obj = ast.unparse(current)
+    chain_parts.reverse()
+
+    chain_expr = base_obj
+    for method, args in chain_parts:
+        args_str = ", ".join(args)
+        chain_expr = f"{chain_expr}.{method}({args_str})"
+
+    return IROperation(
+        id=f"op_{index + 1}",
+        op_type=OperationType.ASSIGNMENT,
+        output=output_var,
+        output_type_hint=output_type,
+        args=[chain_expr]
     )
 
 
@@ -397,6 +498,14 @@ def _determine_outputs(body, type_context: dict) -> list[IROutput]:
                 var_name = stmt.value.id
                 var_type = type_context.get(var_name, TypeHint('auto'))
                 return [IROutput(var_name, var_type)]
+            elif isinstance(stmt.value, ast.Tuple):
+                outputs = []
+                for elt in stmt.value.elts:
+                    if isinstance(elt, ast.Name):
+                        var_name = elt.id
+                        var_type = type_context.get(var_name, TypeHint('auto'))
+                        outputs.append(IROutput(var_name, var_type))
+                return outputs
 
     return []
 

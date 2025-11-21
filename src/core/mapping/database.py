@@ -1,8 +1,12 @@
 """Mapping Database for Python-to-C++ function mappings."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any
+from pathlib import Path
 import json
+import yaml
+
+from .validator import MappingValidator
 
 
 @dataclass
@@ -19,16 +23,20 @@ class FunctionMapping:
         is_method: Whether this is a method call on an object
         arg_mapping: How to map arguments (optional)
         custom_template: Custom code template for complex mappings
+        statements: List of C++ statements for N:M mapping
+        inline_impl: Reference to implementation in implementations.yaml
         notes: Additional notes about the mapping
     """
     python_lib: str
     python_func: str
     cpp_lib: str
     cpp_func: str
-    cpp_headers: List[str]
+    cpp_headers: List[str] = field(default_factory=list)
     is_method: bool = False
     arg_mapping: Optional[Dict[str, str]] = None
     custom_template: Optional[str] = None
+    statements: Optional[List[str]] = None
+    inline_impl: Optional[str] = None
     notes: str = ""
 
 
@@ -57,236 +65,113 @@ class MappingDatabase:
     and can be extended with custom rules.
     """
 
-    def __init__(self, auto_load_learned: bool = True):
+    def __init__(self, auto_load_learned: bool = True, config_dir: Optional[str] = None):
         """
         Initialize mapping database.
 
         Args:
             auto_load_learned: If True, automatically load learned_mappings.json
+            config_dir: Path to config directory (default: project_root/config)
         """
         self.mappings: Dict[str, FunctionMapping] = {}
         self.constants: Dict[str, ConstantMapping] = {}
-        self._initialize_default_mappings()
+        self.implementations: Dict[str, str] = {}  # impl_name -> code
 
-        # Auto-load learned mappings if available
+        if config_dir is None:
+            project_root = Path(__file__).parent.parent.parent.parent
+            config_dir = str(project_root / 'config')
+
+        self.config_dir = Path(config_dir)
+        self._load_implementations()
+        self._load_from_config_files()
+
         if auto_load_learned:
             self._load_learned_mappings()
 
-    def _initialize_default_mappings(self):
-        """Initialize the database with common mappings."""
-        self._add_opencv_mappings()
-        self._add_opencv_constants()
-        self._add_numpy_creation_mappings()
-        self._add_numpy_method_mappings()
-        self._add_numpy_function_mappings()
-        self._add_librosa_mappings()
-        self._add_pil_mappings()
+    def _load_implementations(self) -> None:
+        """Load C++ implementation snippets from config/implementations/."""
+        impl_dir = self.config_dir / 'implementations'
+        if not impl_dir.exists():
+            print(f"⚠️  implementations directory not found: {impl_dir}")
+            return
 
-    def _add_opencv_mappings(self):
-        """Add OpenCV function mappings."""
-        # Map to header-only image.h implementation
-        self.add_mapping(FunctionMapping(
-            python_lib='cv2',
-            python_func='imread',
-            cpp_lib='img',
-            cpp_func='imread',
-            cpp_headers=[],
-            notes='Reads image from file (handled by image.h)'
-        ))
+        impl_files = list(impl_dir.glob('*.yaml'))
+        if not impl_files:
+            print(f"⚠️  No implementation files found in {impl_dir}")
+            return
 
-        self.add_mapping(FunctionMapping(
-            python_lib='cv2',
-            python_func='resize',
-            cpp_lib='img',
-            cpp_func='resize',
-            cpp_headers=[],
-            notes='Resizes image (handled by image.h)'
-        ))
+        for impl_file in impl_files:
+            try:
+                with open(impl_file, 'r') as f:
+                    data = yaml.safe_load(f)
 
-        self.add_mapping(FunctionMapping(
-            python_lib='cv2',
-            python_func='cvtColor',
-            cpp_lib='img',
-            cpp_func='cvtColor_BGR2RGB',
-            cpp_headers=[],
-            notes='Converts BGR to RGB (handled by image.h)'
-        ))
+                if data:
+                    self.implementations.update(data)
+            except Exception as e:
+                print(f"⚠️  Failed to load {impl_file.name}: {e}")
 
-        self.add_mapping(FunctionMapping(
-            python_lib='cv2',
-            python_func='GaussianBlur',
-            cpp_lib='img',
-            cpp_func='GaussianBlur',
-            cpp_headers=[],
-            notes='Applies Gaussian blur (handled by image.h)'
-        ))
+        if self.implementations:
+            print(f"✓ Loaded {len(self.implementations)} C++ implementations")
 
-        self.add_mapping(FunctionMapping(
-            python_lib='cv2',
-            python_func='bilateralFilter',
-            cpp_lib='img',
-            cpp_func='bilateralFilter',
-            cpp_headers=[],
-            notes='Applies bilateral filter (handled by image.h)'
-        ))
+    def _load_from_config_files(self) -> None:
+        """Load mappings from config/mappings/ directory."""
+        mappings_dir = self.config_dir / 'mappings'
+        if not mappings_dir.exists():
+            print(f"⚠️  Mappings directory not found: {mappings_dir}")
+            return
 
-    def _add_opencv_constants(self):
-        """Add OpenCV constant mappings."""
-        self.add_constant(ConstantMapping(
-            python_lib='cv2',
-            python_const='IMREAD_GRAYSCALE',
-            cpp_value='0',
-            notes='Grayscale image read mode'
-        ))
+        config_files = list(mappings_dir.glob('*.yaml'))
+        if not config_files:
+            print(f"⚠️  No mapping files found in {mappings_dir}")
+            return
 
-        self.add_constant(ConstantMapping(
-            python_lib='cv2',
-            python_const='IMREAD_COLOR',
-            cpp_value='1',
-            notes='Color image read mode'
-        ))
+        for config_path in config_files:
+            self._load_config_file(config_path)
 
-        self.add_constant(ConstantMapping(
-            python_lib='cv2',
-            python_const='IMREAD_UNCHANGED',
-            cpp_value='-1',
-            notes='Unchanged image read mode'
-        ))
+    def _load_config_file(self, config_path: Path) -> None:
+        """Load mappings from a single YAML file."""
+        try:
+            with open(config_path, 'r') as f:
+                data = yaml.safe_load(f)
 
-        self.add_constant(ConstantMapping(
-            python_lib='cv2',
-            python_const='COLOR_BGR2RGB',
-            cpp_value='COLOR_BGR2RGB',
-            notes='BGR to RGB color conversion code'
-        ))
+            if not data:
+                return
 
-        self.add_constant(ConstantMapping(
-            python_lib='cv2',
-            python_const='COLOR_RGB2BGR',
-            cpp_value='COLOR_RGB2BGR',
-            notes='RGB to BGR color conversion code'
-        ))
+            validation_errors = MappingValidator.validate_config_file(data, config_path.name)
+            if validation_errors:
+                print(f"⚠️  Validation errors in {config_path.name}:")
+                for error in validation_errors:
+                    print(f"   - {error}")
+                return
 
-        self.add_constant(ConstantMapping(
-            python_lib='cv2',
-            python_const='COLOR_BGR2GRAY',
-            cpp_value='COLOR_BGR2GRAY',
-            notes='BGR to grayscale conversion code'
-        ))
+            for func_data in data.get('functions', []):
+                mapping = FunctionMapping(
+                    python_lib=func_data['python_lib'],
+                    python_func=func_data['python_func'],
+                    cpp_lib=func_data['cpp_lib'],
+                    cpp_func=func_data['cpp_func'],
+                    cpp_headers=func_data.get('cpp_headers', []),
+                    is_method=func_data.get('is_method', False),
+                    arg_mapping=func_data.get('arg_mapping'),
+                    custom_template=func_data.get('custom_template'),
+                    statements=func_data.get('statements'),
+                    inline_impl=func_data.get('inline_impl'),
+                    notes=func_data.get('notes', '')
+                )
+                self.add_mapping(mapping)
 
-    def _add_numpy_creation_mappings(self):
-        """Add NumPy array creation function mappings."""
-        eigen_headers = ['<Eigen/Dense>']
+            for const_data in data.get('constants', []):
+                constant = ConstantMapping(
+                    python_lib=const_data['python_lib'],
+                    python_const=const_data['python_const'],
+                    cpp_value=const_data['cpp_value'],
+                    notes=const_data.get('notes', '')
+                )
+                self.add_constant(constant)
 
-        self.add_mapping(FunctionMapping(
-            python_lib='numpy',
-            python_func='zeros',
-            cpp_lib='Eigen',
-            cpp_func='MatrixXf::Zero',
-            cpp_headers=eigen_headers,
-            custom_template='Eigen::MatrixXf::Zero({rows}, {cols})',
-            notes='Creates zero matrix'
-        ))
+        except Exception as e:
+            print(f"⚠️  Failed to load {config_path.name}: {e}")
 
-        self.add_mapping(FunctionMapping(
-            python_lib='numpy',
-            python_func='ones',
-            cpp_lib='Eigen',
-            cpp_func='MatrixXf::Ones',
-            cpp_headers=eigen_headers,
-            custom_template='Eigen::MatrixXf::Ones({rows}, {cols})',
-            notes='Creates ones matrix'
-        ))
-
-        self.add_mapping(FunctionMapping(
-            python_lib='numpy',
-            python_func='array',
-            cpp_lib='Eigen',
-            cpp_func='Map',
-            cpp_headers=eigen_headers,
-            notes='Creates array from data'
-        ))
-
-    def _add_numpy_method_mappings(self):
-        """Add NumPy array method mappings."""
-        method_configs = [
-            ('astype', 'img', 'astype_float32', [], 'Converts to float32 (handled by image.h)'),
-            ('reshape', 'img', 'reshape', [], 'Reshapes array (handled by image.h)'),
-            ('transpose', 'Eigen', 'transpose', ['<Eigen/Dense>'], 'Transposes array'),
-        ]
-
-        self._add_mappings_from_config('numpy.ndarray', method_configs, is_method=True)
-
-    def _add_numpy_function_mappings(self):
-        """Add NumPy function mappings."""
-        self._add_numpy_stat_mappings()
-        self._add_numpy_minmax_mappings()
-
-    def _add_numpy_stat_mappings(self):
-        """Add NumPy statistical function mappings."""
-        self.add_mapping(FunctionMapping(
-            python_lib='numpy',
-            python_func='mean',
-            cpp_lib='cv',
-            cpp_func='mean',
-            cpp_headers=['<opencv2/opencv.hpp>'],
-            notes='Computes mean'
-        ))
-
-        self.add_mapping(FunctionMapping(
-            python_lib='numpy',
-            python_func='std',
-            cpp_lib='Eigen',
-            cpp_func='mean',
-            cpp_headers=['<Eigen/Dense>', '<cmath>'],
-            custom_template='std::sqrt(({array} - {array}.mean()).square().mean())',
-            notes='Computes standard deviation'
-        ))
-
-    def _add_numpy_minmax_mappings(self):
-        """Add NumPy min/max function mappings."""
-        minmax_mappings = [
-            ('argmax', 'img', 'argmax', [], 'Returns index of maximum value'),
-            ('max', 'img', 'max', [], 'Returns maximum value'),
-            ('argmin', 'img', 'argmin', [], 'Returns index of minimum value'),
-            ('min', 'img', 'min', [], 'Returns minimum value'),
-        ]
-
-        self._add_mappings_from_config('numpy', minmax_mappings)
-
-    def _add_librosa_mappings(self):
-        """Add Librosa function mappings."""
-        mappings = [
-            ('load', 'sndfile', 'sf_open', ['<sndfile.h>'], 'Loads audio file'),
-            ('stft', 'fftw', 'fftw_plan_dft_1d', ['<fftw3.h>'], 'Short-time Fourier transform'),
-        ]
-
-        self._add_mappings_from_config('librosa', mappings)
-
-    def _add_mappings_from_config(self, python_lib: str, configs: list,
-                                  is_method: bool = False) -> None:
-        """Add mappings from configuration list."""
-        for python_func, cpp_lib, cpp_func, headers, notes in configs:
-            self.add_mapping(FunctionMapping(
-                python_lib=python_lib,
-                python_func=python_func,
-                cpp_lib=cpp_lib,
-                cpp_func=cpp_func,
-                cpp_headers=headers,
-                is_method=is_method,
-                notes=notes
-            ))
-
-    def _add_pil_mappings(self):
-        """Add PIL/Pillow function mappings."""
-        self.add_mapping(FunctionMapping(
-            python_lib='PIL.Image',
-            python_func='open',
-            cpp_lib='cv',
-            cpp_func='imread',
-            cpp_headers=['<opencv2/opencv.hpp>'],
-            notes='Opens image file (use OpenCV instead)'
-        ))
 
     def add_mapping(self, mapping: FunctionMapping):
         """

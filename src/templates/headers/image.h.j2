@@ -375,15 +375,50 @@ inline ImageF GaussianBlur(const ImageF& src, int ksize) {
     return dst;
 }
 
-// Bilateral filter (simplified)
-inline Image bilateralFilter(const Image& src, int d, double sigma_color, double sigma_space) {
-    Image dst = src;
+// Bilateral filter
+inline ImageF bilateralFilter(const ImageF& src, int d, double sigma_color, double sigma_space) {
+    ImageF dst(src.height, src.width, src.channels);
+
+    int radius = d / 2;
+    float color_coeff = -0.5f / (sigma_color * sigma_color);
+    float space_coeff = -0.5f / (sigma_space * sigma_space);
+
+    for (int y = 0; y < src.height; ++y) {
+        for (int x = 0; x < src.width; ++x) {
+            for (int c = 0; c < src.channels; ++c) {
+                float sum_weight = 0.0f;
+                float sum_value = 0.0f;
+                float center_val = src.at(y, x, c);
+
+                for (int ky = -radius; ky <= radius; ++ky) {
+                    for (int kx = -radius; kx <= radius; ++kx) {
+                        int ny = std::clamp(y + ky, 0, src.height - 1);
+                        int nx = std::clamp(x + kx, 0, src.width - 1);
+
+                        float neighbor_val = src.at(ny, nx, c);
+                        float color_diff = neighbor_val - center_val;
+                        float space_dist = ky * ky + kx * kx;
+
+                        float weight = std::exp(color_diff * color_diff * color_coeff +
+                                               space_dist * space_coeff);
+
+                        sum_weight += weight;
+                        sum_value += weight * neighbor_val;
+                    }
+                }
+
+                dst.at(y, x, c) = sum_value / sum_weight;
+            }
+        }
+    }
+
     return dst;
 }
 
-inline ImageF bilateralFilter(const ImageF& src, int d, double sigma_color, double sigma_space) {
-    ImageF dst = src;
-    return dst;
+inline Image bilateralFilter(const Image& src, int d, double sigma_color, double sigma_space) {
+    ImageF src_f(src);
+    ImageF dst_f = bilateralFilter(src_f, d, sigma_color, sigma_space);
+    return dst_f.to_uint8();
 }
 
 // Element-wise division (converts to float)
@@ -459,6 +494,204 @@ inline float max(const std::vector<float>& arr) {
 
 inline float min(const std::vector<float>& arr) {
     return *std::min_element(arr.begin(), arr.end());
+}
+
+// Sobel filter (gradient detection)
+inline ImageF Sobel(const ImageF& src, int dx, int dy, int ksize = 3) {
+    ImageF dst(src.height, src.width, src.channels);
+
+    int sobel_x[3][3] = {
+        {-1, 0, 1},
+        {-2, 0, 2},
+        {-1, 0, 1}
+    };
+
+    int sobel_y[3][3] = {
+        {-1, -2, -1},
+        { 0,  0,  0},
+        { 1,  2,  1}
+    };
+
+    for (int y = 1; y < src.height - 1; ++y) {
+        for (int x = 1; x < src.width - 1; ++x) {
+            for (int c = 0; c < src.channels; ++c) {
+                float gx = 0.0f, gy = 0.0f;
+
+                for (int ky = -1; ky <= 1; ++ky) {
+                    for (int kx = -1; kx <= 1; ++kx) {
+                        float val = src.at(y + ky, x + kx, c);
+                        if (dx > 0) gx += val * sobel_x[ky + 1][kx + 1];
+                        if (dy > 0) gy += val * sobel_y[ky + 1][kx + 1];
+                    }
+                }
+
+                if (dx > 0 && dy > 0) {
+                    dst.at(y, x, c) = std::sqrt(gx * gx + gy * gy);
+                } else if (dx > 0) {
+                    dst.at(y, x, c) = std::abs(gx);
+                } else if (dy > 0) {
+                    dst.at(y, x, c) = std::abs(gy);
+                }
+            }
+        }
+    }
+
+    return dst;
+}
+
+inline Image Sobel(const Image& src, int dx, int dy, int ksize = 3) {
+    ImageF src_f(src);
+    ImageF dst_f = Sobel(src_f, dx, dy, ksize);
+    return dst_f.to_uint8();
+}
+
+// Canny edge detection
+inline ImageF Canny(const ImageF& src, double threshold1, double threshold2) {
+    ImageF blurred = GaussianBlur(src, 3);
+    ImageF grad_x = Sobel(blurred, 1, 0);
+    ImageF grad_y = Sobel(blurred, 0, 1);
+
+    ImageF magnitude(src.height, src.width, src.channels);
+    ImageF direction(src.height, src.width, src.channels);
+
+    for (int y = 0; y < src.height; ++y) {
+        for (int x = 0; x < src.width; ++x) {
+            for (int c = 0; c < src.channels; ++c) {
+                float gx = grad_x.at(y, x, c);
+                float gy = grad_y.at(y, x, c);
+                magnitude.at(y, x, c) = std::sqrt(gx * gx + gy * gy);
+                direction.at(y, x, c) = std::atan2(gy, gx);
+            }
+        }
+    }
+
+    ImageF edges(src.height, src.width, src.channels);
+
+    for (int y = 1; y < src.height - 1; ++y) {
+        for (int x = 1; x < src.width - 1; ++x) {
+            for (int c = 0; c < src.channels; ++c) {
+                float mag = magnitude.at(y, x, c);
+
+                if (mag < threshold1) {
+                    edges.at(y, x, c) = 0.0f;
+                } else if (mag > threshold2) {
+                    edges.at(y, x, c) = 255.0f;
+                } else {
+                    edges.at(y, x, c) = mag;
+                }
+            }
+        }
+    }
+
+    return edges;
+}
+
+inline Image Canny(const Image& src, double threshold1, double threshold2) {
+    ImageF src_f(src);
+    ImageF dst_f = Canny(src_f, threshold1, threshold2);
+    return dst_f.to_uint8();
+}
+
+// Morphological operations - erode
+inline Image erode(const Image& src, int ksize = 3) {
+    Image dst(src.height, src.width, src.channels);
+    int radius = ksize / 2;
+
+    for (int y = 0; y < src.height; ++y) {
+        for (int x = 0; x < src.width; ++x) {
+            for (int c = 0; c < src.channels; ++c) {
+                uint8_t min_val = 255;
+
+                for (int ky = -radius; ky <= radius; ++ky) {
+                    for (int kx = -radius; kx <= radius; ++kx) {
+                        int ny = std::clamp(y + ky, 0, src.height - 1);
+                        int nx = std::clamp(x + kx, 0, src.width - 1);
+                        min_val = std::min(min_val, src.at(ny, nx, c));
+                    }
+                }
+
+                dst.at(y, x, c) = min_val;
+            }
+        }
+    }
+
+    return dst;
+}
+
+inline ImageF erode(const ImageF& src, int ksize = 3) {
+    ImageF dst(src.height, src.width, src.channels);
+    int radius = ksize / 2;
+
+    for (int y = 0; y < src.height; ++y) {
+        for (int x = 0; x < src.width; ++x) {
+            for (int c = 0; c < src.channels; ++c) {
+                float min_val = std::numeric_limits<float>::max();
+
+                for (int ky = -radius; ky <= radius; ++ky) {
+                    for (int kx = -radius; kx <= radius; ++kx) {
+                        int ny = std::clamp(y + ky, 0, src.height - 1);
+                        int nx = std::clamp(x + kx, 0, src.width - 1);
+                        min_val = std::min(min_val, src.at(ny, nx, c));
+                    }
+                }
+
+                dst.at(y, x, c) = min_val;
+            }
+        }
+    }
+
+    return dst;
+}
+
+// Morphological operations - dilate
+inline Image dilate(const Image& src, int ksize = 3) {
+    Image dst(src.height, src.width, src.channels);
+    int radius = ksize / 2;
+
+    for (int y = 0; y < src.height; ++y) {
+        for (int x = 0; x < src.width; ++x) {
+            for (int c = 0; c < src.channels; ++c) {
+                uint8_t max_val = 0;
+
+                for (int ky = -radius; ky <= radius; ++ky) {
+                    for (int kx = -radius; kx <= radius; ++kx) {
+                        int ny = std::clamp(y + ky, 0, src.height - 1);
+                        int nx = std::clamp(x + kx, 0, src.width - 1);
+                        max_val = std::max(max_val, src.at(ny, nx, c));
+                    }
+                }
+
+                dst.at(y, x, c) = max_val;
+            }
+        }
+    }
+
+    return dst;
+}
+
+inline ImageF dilate(const ImageF& src, int ksize = 3) {
+    ImageF dst(src.height, src.width, src.channels);
+    int radius = ksize / 2;
+
+    for (int y = 0; y < src.height; ++y) {
+        for (int x = 0; x < src.width; ++x) {
+            for (int c = 0; c < src.channels; ++c) {
+                float max_val = std::numeric_limits<float>::lowest();
+
+                for (int ky = -radius; ky <= radius; ++ky) {
+                    for (int kx = -radius; kx <= radius; ++kx) {
+                        int ny = std::clamp(y + ky, 0, src.height - 1);
+                        int nx = std::clamp(x + kx, 0, src.width - 1);
+                        max_val = std::max(max_val, src.at(ny, nx, c));
+                    }
+                }
+
+                dst.at(y, x, c) = max_val;
+            }
+        }
+    }
+
+    return dst;
 }
 
 } // namespace img

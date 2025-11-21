@@ -91,11 +91,18 @@ class PythonRunner:
             self._try_save_as_numpy(result, output_path)
 
     def _save_tuple_results(self, result: tuple, function_name: str, suffix: str):
-        """Save tuple of arrays as separate files."""
-        for i, item in enumerate(result):
-            if isinstance(item, np.ndarray):
-                output_path = self.results_dir / f"{function_name}_{suffix}_{i}.npy"
-                np.save(output_path, item)
+        """Save tuple of scalars as structured array."""
+        output_path = self.results_dir / f"{function_name}_{suffix}.npy"
+
+        if len(result) == 2:
+            dtype1 = np.dtype(type(result[0])).type
+            dtype2 = np.dtype(type(result[1])).type
+            dt = np.dtype([('f0', dtype1), ('f1', dtype2)])
+            structured = np.array((result[0], result[1]), dtype=dt)
+            np.save(output_path, structured)
+        else:
+            # Fallback for other tuple sizes
+            np.save(output_path, np.array(result))
 
     def _try_save_as_numpy(self, result: Any, output_path: Path):
         """Attempt to convert and save result as numpy array."""

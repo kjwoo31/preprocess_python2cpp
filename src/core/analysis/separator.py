@@ -101,7 +101,7 @@ class PipelineSeparator:
             has_inference_marker=True
         )
 
-    def _categorize_statements(self, statements: list, marker_line: int) -> tuple:
+    def _categorize_statements(self, statements: list, marker_line: int) -> tuple[list, list, list]:
         """Categorize statements into pre/inf/post sections."""
         sections = {"pre": [], "inf": [], "post": []}
         current_section = "pre"
@@ -254,10 +254,8 @@ class PipelineSeparator:
         for stmt in stmts:
             self._collect_defined_vars(stmt, defined)
 
-        # Return last defined variable (excluding inputs)
         remaining = defined - exclude
         if remaining:
-            # Find the last assignment
             for stmt in reversed(stmts):
                 if isinstance(stmt, ast.Assign):
                     for target in stmt.targets:
@@ -282,6 +280,12 @@ class PipelineSeparator:
             if isinstance(stmt, ast.Return) and stmt.value:
                 if isinstance(stmt.value, ast.Name):
                     return {stmt.value.id}
+                elif isinstance(stmt.value, ast.Tuple):
+                    vars_in_tuple = set()
+                    for elt in stmt.value.elts:
+                        if isinstance(elt, ast.Name):
+                            vars_in_tuple.add(elt.id)
+                    return vars_in_tuple
         return set()
 
     def _create_function_segment_with_outputs(

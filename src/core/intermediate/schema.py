@@ -88,6 +88,12 @@ class IROperation:
         kwargs: Dictionary of keyword arguments
         operator: For arithmetic operations, the operator (e.g., 'add', 'divide')
         operands: For arithmetic operations, the operands
+        condition: For conditionals, the condition expression
+        true_branch: For conditionals, operations in if block
+        false_branch: For conditionals, operations in else block
+        loop_var: For loops, the iteration variable
+        iterable: For loops, the iterable expression
+        loop_body: For loops, operations in loop body
     """
     id: str
     op_type: OperationType
@@ -100,6 +106,12 @@ class IROperation:
     kwargs: Dict[str, Any] = field(default_factory=dict)
     operator: Optional[str] = None
     operands: List[Any] = field(default_factory=list)
+    condition: Optional[str] = None
+    true_branch: List['IROperation'] = field(default_factory=list)
+    false_branch: List['IROperation'] = field(default_factory=list)
+    loop_var: Optional[str] = None
+    iterable: Optional[str] = None
+    loop_body: List['IROperation'] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -131,6 +143,18 @@ class IROperation:
             result['kwargs'] = self.kwargs
         if self.operands:
             result['operands'] = self.operands
+        if self.condition:
+            result['condition'] = self.condition
+        if self.true_branch:
+            result['true_branch'] = [op.to_dict() for op in self.true_branch]
+        if self.false_branch:
+            result['false_branch'] = [op.to_dict() for op in self.false_branch]
+        if self.loop_var:
+            result['loop_var'] = self.loop_var
+        if self.iterable:
+            result['iterable'] = self.iterable
+        if self.loop_body:
+            result['loop_body'] = [op.to_dict() for op in self.loop_body]
 
 
 @dataclass

@@ -1,0 +1,13 @@
+# PIL/Pillow Image Processing Mappings
+# Maps PIL functions to C++ implementations
+
+functions:
+  - python_lib: PIL.Image
+    python_func: open
+    cpp_lib: cv
+    cpp_func: imread
+    cpp_headers: ["<opencv2/opencv.hpp>"]
+    is_method: false
+    notes: "Opens image file (use OpenCV instead)"
+
+constants: []

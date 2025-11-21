@@ -1,0 +1,101 @@
+// Common image types and operators
+// Shared across pipeline components to avoid redefinition
+
+#ifndef IMG_COMMON_H
+#define IMG_COMMON_H
+
+#include <vector>
+#include <cstdint>
+#include <algorithm>
+
+// Include stb_image.h for declarations only (implementation in image_loader.cpp)
+#include "stb_image.h"
+
+namespace img {
+
+// Image data structure
+struct Image {
+    std::vector<uint8_t> data;
+    int height, width, channels;
+
+    Image() : height(0), width(0), channels(0) {}
+    Image(int h, int w, int c) : height(h), width(w), channels(c) {
+        data.resize(h * w * c, 0);
+    }
+
+    uint8_t& at(int y, int x, int c) {
+        return data[(y * width + x) * channels + c];
+    }
+
+    const uint8_t& at(int y, int x, int c) const {
+        return data[(y * width + x) * channels + c];
+    }
+};
+
+// Float image for processing
+struct ImageF {
+    std::vector<float> data;
+    int height, width, channels;
+
+    ImageF() : height(0), width(0), channels(0) {}
+    ImageF(int h, int w, int c) : height(h), width(w), channels(c) {
+        data.resize(h * w * c, 0.0f);
+    }
+    ImageF(const Image& img) : height(img.height), width(img.width), channels(img.channels) {
+        data.resize(img.data.size());
+        for (size_t i = 0; i < img.data.size(); ++i) {
+            data[i] = static_cast<float>(img.data[i]);
+        }
+    }
+
+    float& at(int y, int x, int c) {
+        return data[(y * width + x) * channels + c];
+    }
+
+    const float& at(int y, int x, int c) const {
+        return data[(y * width + x) * channels + c];
+    }
+
+    Image to_uint8() const {
+        Image result(height, width, channels);
+        for (size_t i = 0; i < data.size(); ++i) {
+            float val = std::clamp(data[i], 0.0f, 255.0f);
+            result.data[i] = static_cast<uint8_t>(val + 0.5f);
+        }
+        return result;
+    }
+};
+
+// Arithmetic operators (inline header-only)
+inline ImageF operator/(const Image& img, float scalar) {
+    ImageF result(img);
+    for (auto& val : result.data) {
+        val /= scalar;
+    }
+    return result;
+}
+
+inline ImageF operator/(const ImageF& img, float scalar) {
+    ImageF result = img;
+    for (auto& val : result.data) {
+        val /= scalar;
+    }
+    return result;
+}
+
+inline ImageF reshape(const ImageF& img, int new_height, int new_width) {
+    int total_elements = img.height * img.width * img.channels;
+    int expected_elements = new_height * new_width;
+
+    if (total_elements != expected_elements) {
+        throw std::runtime_error("Cannot reshape: element count mismatch");
+    }
+
+    ImageF result(new_height, new_width, 1);
+    result.data = img.data;
+    return result;
+}
+
+}  // namespace img
+
+#endif  // IMG_COMMON_H

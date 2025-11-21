@@ -1,0 +1,153 @@
+# OpenCV (cv2) Function and Constant Mappings
+# Maps Python OpenCV calls to modular header-only implementations
+
+functions:
+  - python_lib: cv2
+    python_func: imread
+    cpp_lib: img
+    cpp_func: imread
+    cpp_headers: []
+    is_method: false
+    inline_impl: "img_imread"
+    notes: "Reads image from file (inline PPM/PGM reader)"
+
+  - python_lib: cv2
+    python_func: resize
+    cpp_lib: img
+    cpp_func: resize
+    cpp_headers: []
+    is_method: false
+    inline_impl: "img_resize"
+    notes: "Resizes image with bilinear interpolation"
+
+  - python_lib: cv2
+    python_func: cvtColor
+    cpp_lib: img
+    cpp_func: cvtColor_BGR2RGB
+    cpp_headers: []
+    is_method: false
+    inline_impl: "img_cvt_color_bgr2rgb"
+    notes: "Converts BGR to RGB"
+
+  - python_lib: cv2
+    python_func: GaussianBlur
+    cpp_lib: img
+    cpp_func: GaussianBlur
+    cpp_headers: ["img/filter.h"]
+    is_method: false
+    notes: "Applies Gaussian blur (modular: img/filter.h)"
+
+  - python_lib: cv2
+    python_func: bilateralFilter
+    cpp_lib: img
+    cpp_func: bilateralFilter
+    cpp_headers: ["img/filter.h"]
+    is_method: false
+    notes: "Applies bilateral filter (modular: img/filter.h)"
+
+  - python_lib: cv2
+    python_func: split
+    cpp_lib: cv
+    cpp_func: split
+    cpp_headers: ["<opencv2/opencv.hpp>"]
+    is_method: false
+    statements:
+      - "std::vector<cv::Mat> {output};"
+      - "cv::split({input}, {output});"
+    notes: "Splits multi-channel image into separate channels"
+
+  - python_lib: cv2
+    python_func: Canny
+    cpp_lib: img
+    cpp_func: Canny
+    cpp_headers: ["img/edge.h"]
+    is_method: false
+    notes: "Canny edge detection (modular: img/edge.h)"
+
+  - python_lib: cv2
+    python_func: Sobel
+    cpp_lib: img
+    cpp_func: Sobel
+    cpp_headers: ["img/edge.h"]
+    is_method: false
+    notes: "Sobel gradient filter (modular: img/edge.h)"
+
+  - python_lib: cv2
+    python_func: erode
+    cpp_lib: img
+    cpp_func: erode
+    cpp_headers: ["img/morphology.h"]
+    is_method: false
+    notes: "Morphological erosion (modular: img/morphology.h)"
+
+  - python_lib: cv2
+    python_func: dilate
+    cpp_lib: img
+    cpp_func: dilate
+    cpp_headers: ["img/morphology.h"]
+    is_method: false
+    notes: "Morphological dilation (modular: img/morphology.h)"
+
+constants:
+  # Image read modes
+  - python_lib: cv2
+    python_const: IMREAD_GRAYSCALE
+    cpp_value: "0"
+    notes: "Grayscale image read mode"
+
+  - python_lib: cv2
+    python_const: IMREAD_COLOR
+    cpp_value: "1"
+    notes: "Color image read mode"
+
+  - python_lib: cv2
+    python_const: IMREAD_UNCHANGED
+    cpp_value: "-1"
+    notes: "Unchanged image read mode"
+
+  # Color conversion codes
+  - python_lib: cv2
+    python_const: COLOR_BGR2RGB
+    cpp_value: "COLOR_BGR2RGB"
+    notes: "BGR to RGB color conversion code"
+
+  - python_lib: cv2
+    python_const: COLOR_RGB2BGR
+    cpp_value: "COLOR_RGB2BGR"
+    notes: "RGB to BGR color conversion code"
+
+  - python_lib: cv2
+    python_const: COLOR_BGR2GRAY
+    cpp_value: "COLOR_BGR2GRAY"
+    notes: "BGR to grayscale conversion code"
+
+  # Data types for Sobel filter
+  - python_lib: cv2
+    python_const: CV_64F
+    cpp_value: "6"
+    notes: "64-bit floating point data type"
+
+  - python_lib: cv2
+    python_const: CV_32F
+    cpp_value: "5"
+    notes: "32-bit floating point data type"
+
+  - python_lib: cv2
+    python_const: CV_8U
+    cpp_value: "0"
+    notes: "8-bit unsigned integer data type"
+
+  - python_lib: cv2
+    python_const: CV_16U
+    cpp_value: "2"
+    notes: "16-bit unsigned integer data type"
+
+  - python_lib: cv2
+    python_const: CV_16S
+    cpp_value: "3"
+    notes: "16-bit signed integer data type"
+
+  - python_lib: cv2
+    python_const: CV_32S
+    cpp_value: "4"
+    notes: "32-bit signed integer data type"

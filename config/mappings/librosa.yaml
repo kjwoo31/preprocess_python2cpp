@@ -1,0 +1,21 @@
+# Librosa Audio Processing Mappings
+# Maps Librosa functions to C++ audio processing libraries
+
+functions:
+  - python_lib: librosa
+    python_func: load
+    cpp_lib: sndfile
+    cpp_func: sf_open
+    cpp_headers: ["<sndfile.h>"]
+    is_method: false
+    notes: "Loads audio file"
+
+  - python_lib: librosa
+    python_func: stft
+    cpp_lib: fftw
+    cpp_func: fftw_plan_dft_1d
+    cpp_headers: ["<fftw3.h>"]
+    is_method: false
+    notes: "Short-time Fourier transform"
+
+constants: []

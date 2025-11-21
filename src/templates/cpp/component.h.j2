@@ -9,13 +9,28 @@
 #include <iostream>
 #include <cmath>
 #include <algorithm>
-#include "image.h"
+#include "img_common.h"
 
 {% for header in headers %}
 #include {{ header }}
 {% endfor %}
 
 using namespace std;
+
+// Component-specific inline functions (only functions used by this component)
+namespace img {
+{% set impl_injected = [] %}
+{% for op in pipeline.operations %}
+{% set mapping = operation_mappings.get(op.id) %}
+{% if mapping and mapping.inline_impl and mapping.inline_impl not in impl_injected %}
+{% set implementation = implementations.get(mapping.inline_impl) %}
+{% if implementation %}
+{{ implementation }}
+{% set _ = impl_injected.append(mapping.inline_impl) %}
+{% endif %}
+{% endif %}
+{% endfor %}
+}  // namespace img
 
 {% macro generate_operations(declared_vars, final_vars) %}
 {% for op in pipeline.operations %}
