@@ -169,6 +169,7 @@ def _build_pipelines_from_separation(separated, source_code: str) -> tuple:
     ast_parser.parse(source_code)
     ir_builder = IRBuilder()
 
+    ir_builder = IRBuilder()
     pre_pipeline = _build_preprocess_pipeline(separated, type_engine, ast_parser, ir_builder)
     inf_pipeline = _build_inference_pipeline(separated, type_engine, ast_parser, ir_builder)
     post_pipeline = _build_postprocess_pipeline(separated, type_engine, ast_parser, ir_builder)
@@ -176,7 +177,7 @@ def _build_pipelines_from_separation(separated, source_code: str) -> tuple:
     return pre_pipeline, inf_pipeline, post_pipeline
 
 
-def _build_preprocess_pipeline(separated, type_engine, ast_parser, ir_builder: IRBuilder) -> IRPipeline | None:
+def _build_preprocess_pipeline(separated, type_engine, ast_parser, ir_builder: IRBuilder) -> Optional[IRPipeline]:
     """Build preprocessing pipeline if available."""
     if not separated.preprocess:
         return None
@@ -185,7 +186,7 @@ def _build_preprocess_pipeline(separated, type_engine, ast_parser, ir_builder: I
     )
 
 
-def _build_inference_pipeline(separated, type_engine, ast_parser, ir_builder: IRBuilder) -> IRPipeline | None:
+def _build_inference_pipeline(separated, type_engine, ast_parser, ir_builder: IRBuilder) -> Optional[IRPipeline]:
     """Build inference pipeline if available."""
     if not separated.inference:
         return None
@@ -198,7 +199,7 @@ def _build_inference_pipeline(separated, type_engine, ast_parser, ir_builder: IR
     return inf_pipeline
 
 
-def _build_postprocess_pipeline(separated, type_engine, ast_parser, ir_builder: IRBuilder) -> IRPipeline | None:
+def _build_postprocess_pipeline(separated, type_engine, ast_parser, ir_builder: IRBuilder) -> Optional[IRPipeline]:
     """Build postprocessing pipeline if available."""
     if not separated.postprocess:
         return None
