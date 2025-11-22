@@ -85,9 +85,6 @@ class MappingDatabase:
         self._load_implementations()
         self._load_from_config_files()
 
-        if auto_load_learned:
-            self._load_learned_mappings()
-
     def _load_implementations(self) -> None:
         """Load C++ implementation snippets from config/implementations/."""
         impl_dir = self.config_dir / 'implementations'
@@ -274,74 +271,81 @@ class MappingDatabase:
             )
             self.add_mapping(mapping)
 
-    def _load_learned_mappings(self):
-        """
-        Load learned mappings from learned_mappings.json if it exists.
-
-        This allows the system to reuse LLM-generated mappings from previous runs.
-        """
-        import os
-        from pathlib import Path
-
-        # Try to find learned_mappings.json in project root
-        project_root = Path(__file__).parent.parent.parent
-        learned_file = project_root / 'learned_mappings.json'
-
-        if learned_file.exists():
-            try:
-                initial_count = len(self.mappings)
-                self.import_from_json(str(learned_file))
-                num_learned = len(self.mappings) - initial_count
-                if num_learned > 0:
-                    print(f"✓ Loaded {num_learned} learned mapping(s) from learned_mappings.json")
-            except Exception as e:
-                print(f"⚠️  Warning: Failed to load learned mappings: {e}")
-
     def save_learned_mapping(self, mapping: FunctionMapping, learned_file: str = None):
         """
-        Save a new learned mapping to the learned_mappings.json file.
+        Save a new learned mapping to the config/mappings/learned.yaml file.
 
         Args:
             mapping: The mapping to save
-            learned_file: Path to learned mappings file (default: learned_mappings.json)
+            learned_file: Path to learned mappings file (default: config/mappings/learned.yaml)
         """
         from pathlib import Path
 
         if learned_file is None:
-            project_root = Path(__file__).parent.parent.parent
-            learned_file = str(project_root / 'learned_mappings.json')
+            learned_file = self.config_dir / 'mappings' / 'learned.yaml'
+        else:
+            learned_file = Path(learned_file)
 
         # Add to current database
         self.add_mapping(mapping)
 
+        # Ensure directory exists
+        if not learned_file.parent.exists():
+            learned_file.parent.mkdir(parents=True, exist_ok=True)
+
         # Load existing learned mappings
-        learned_mappings = []
-        if Path(learned_file).exists():
+        data = {'functions': [], 'constants': []}
+        if learned_file.exists():
             try:
                 with open(learned_file, 'r') as f:
-                    learned_mappings = json.load(f)
-            except:
-                learned_mappings = []
+                    loaded_data = yaml.safe_load(f)
+                    if loaded_data:
+                        data = loaded_data
+            except Exception as e:
+                print(f"⚠️  Failed to load existing learned mappings: {e}")
+
+        if 'functions' not in data:
+            data['functions'] = []
 
         # Check if this mapping already exists
         key = f"{mapping.python_lib}.{mapping.python_func}"
-        existing = [m for m in learned_mappings
-                   if f"{m['python_lib']}.{m['python_func']}" == key]
+        existing_idx = -1
+        for i, m in enumerate(data['functions']):
+            if f"{m['python_lib']}.{m['python_func']}" == key:
+                existing_idx = i
+                break
 
-        if not existing:
+        mapping_dict = {
+            'python_lib': mapping.python_lib,
+            'python_func': mapping.python_func,
+            'cpp_lib': mapping.cpp_lib,
+            'cpp_func': mapping.cpp_func,
+            'cpp_headers': mapping.cpp_headers,
+            'is_method': mapping.is_method,
+            'notes': mapping.notes + ' [LLM-learned]'
+        }
+
+        # Add other optional fields if present
+        if mapping.arg_mapping:
+            mapping_dict['arg_mapping'] = mapping.arg_mapping
+        if mapping.custom_template:
+            mapping_dict['custom_template'] = mapping.custom_template
+        if mapping.statements:
+            mapping_dict['statements'] = mapping.statements
+        if mapping.inline_impl:
+            mapping_dict['inline_impl'] = mapping.inline_impl
+
+        if existing_idx >= 0:
+            # Update existing mapping
+            data['functions'][existing_idx] = mapping_dict
+        else:
             # Add new mapping
-            learned_mappings.append({
-                'python_lib': mapping.python_lib,
-                'python_func': mapping.python_func,
-                'cpp_lib': mapping.cpp_lib,
-                'cpp_func': mapping.cpp_func,
-                'cpp_headers': mapping.cpp_headers,
-                'is_method': mapping.is_method,
-                'notes': mapping.notes + ' [LLM-learned]'
-            })
+            data['functions'].append(mapping_dict)
 
-            # Save back to file
+        # Save back to file
+        try:
             with open(learned_file, 'w') as f:
-                json.dump(learned_mappings, f, indent=2)
-
-            print(f"✓ Saved learned mapping: {key} → {mapping.cpp_lib}::{mapping.cpp_func}")
+                yaml.dump(data, f, sort_keys=False, indent=2)
+            print(f"✓ Saved learned mapping to {learned_file.name}: {key} → {mapping.cpp_lib}::{mapping.cpp_func}")
+        except Exception as e:
+            print(f"⚠️  Failed to save learned mapping: {e}")

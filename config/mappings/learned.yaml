@@ -1,0 +1,10 @@
+functions:
+- python_lib: cv2
+  python_func: GaussianBlur
+  cpp_lib: cv
+  cpp_func: Mat
+  cpp_headers:
+  - <iostream>
+  is_method: false
+  notes: LLM-generated from op1 [LLM-learned]
+constants: []
