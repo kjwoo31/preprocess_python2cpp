@@ -68,36 +68,39 @@ functions:
 
   - python_lib: numpy.ndarray
     python_func: transpose
-    cpp_lib: Eigen
+    cpp_lib: img
     cpp_func: transpose
-    cpp_headers: ["<Eigen/Dense>"]
+    cpp_headers: []
     is_method: true
+    inline_impl: "img_transpose"
     notes: "Transposes array"
 
   - python_lib: numpy
     python_func: transpose
-    cpp_lib: Eigen
+    cpp_lib: img
     cpp_func: transpose
-    cpp_headers: ["<Eigen/Dense>"]
+    cpp_headers: []
     is_method: false
+    inline_impl: "img_transpose"
     notes: "Transposes array (standalone function)"
 
   # Statistical Functions
   - python_lib: numpy
     python_func: mean
-    cpp_lib: cv
+    cpp_lib: img
     cpp_func: mean
-    cpp_headers: ["<opencv2/opencv.hpp>"]
+    cpp_headers: []
     is_method: false
+    inline_impl: "img_mean"
     notes: "Computes mean"
 
   - python_lib: numpy
     python_func: std
-    cpp_lib: Eigen
-    cpp_func: mean
-    cpp_headers: ["<Eigen/Dense>", "<cmath>"]
+    cpp_lib: img
+    cpp_func: std
+    cpp_headers: []
     is_method: false
-    custom_template: "std::sqrt(({array} - {array}.mean()).square().mean())"
+    inline_impl: "img_std"
     notes: "Computes standard deviation"
 
   # Min/Max Functions
@@ -115,15 +118,16 @@ functions:
     python_func: max
     cpp_lib: img
     cpp_func: max
-    cpp_headers: ["img/stats.h"]
+    cpp_headers: []
     is_method: false
+    inline_impl: "img_max"
     notes: "Returns maximum value"
 
   - python_lib: numpy
     python_func: argmin
     cpp_lib: img
     cpp_func: argmin
-    cpp_headers: ["img/stats.h"]
+    cpp_headers: []
     is_method: false
     notes: "Returns index of minimum value"
 
@@ -131,8 +135,9 @@ functions:
     python_func: min
     cpp_lib: img
     cpp_func: min
-    cpp_headers: ["img/stats.h"]
+    cpp_headers: []
     is_method: false
+    inline_impl: "img_min"
     notes: "Returns minimum value"
 
   # Arithmetic Operations
@@ -149,41 +154,55 @@ functions:
     python_func: multiply
     cpp_lib: img
     cpp_func: operator*
-    cpp_headers: ["img/arithmetic.h"]
+    cpp_headers: []
     is_method: false
+    inline_impl: "img_operator_mul"
     notes: "Element-wise multiplication"
 
   - python_lib: numpy
     python_func: add
     cpp_lib: img
     cpp_func: operator+
-    cpp_headers: ["img/arithmetic.h"]
+    cpp_headers: []
     is_method: false
+    inline_impl: "img_operator_add"
     notes: "Element-wise addition"
 
   - python_lib: numpy
     python_func: subtract
     cpp_lib: img
     cpp_func: operator-
-    cpp_headers: ["img/arithmetic.h"]
+    cpp_headers: []
     is_method: false
+    inline_impl: "img_operator_sub"
     notes: "Element-wise subtraction"
+
+  - python_lib: numpy
+    python_func: clip
+    cpp_lib: img
+    cpp_func: clip
+    cpp_headers: []
+    is_method: false
+    inline_impl: "img_clip"
+    notes: "Clips values to range"
 
   # Data type conversion
   - python_lib: numpy
     python_func: float32
     cpp_lib: img
     cpp_func: astype_float32
-    cpp_headers: ["img/convert.h"]
+    cpp_headers: []
     is_method: false
+    inline_impl: "img_astype_float32"
     notes: "Convert to float32 type"
 
   - python_lib: numpy
     python_func: uint8
     cpp_lib: img
-    cpp_func: to_uint8
-    cpp_headers: ["img/convert.h"]
+    cpp_func: astype_uint8
+    cpp_headers: []
     is_method: false
+    inline_impl: "img_astype_uint8"
     notes: "Convert to uint8 type"
 
 constants:

@@ -264,24 +264,31 @@ class CppRunner:
     ) -> float:
         """Measure average execution time over multiple iterations."""
         times = []
-
         for _ in range(iterations):
-            start_time = time.perf_counter()
-            result = subprocess.run(
-                [str(executable.absolute()), input_path],
-                cwd=project_path / "build",
-                capture_output=True,
-                text=True,
-                timeout=10,
+            iteration_time = self._execute_single_iteration(
+                executable, input_path, project_path
             )
-            end_time = time.perf_counter()
-
-            if result.returncode != 0:
-                raise RuntimeError(f"Execution failed: {result.stderr}")
-
-            times.append(end_time - start_time)
-
+            times.append(iteration_time)
         return sum(times) / len(times)
+
+    def _execute_single_iteration(
+        self, executable: Path, input_path: str, project_path: Path
+    ) -> float:
+        """Execute single iteration and return execution time."""
+        start_time = time.perf_counter()
+        result = subprocess.run(
+            [str(executable.absolute()), input_path],
+            cwd=project_path / "build",
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        end_time = time.perf_counter()
+
+        if result.returncode != 0:
+            raise RuntimeError(f"Execution failed: {result.stderr}")
+
+        return end_time - start_time
 
     def _copy_results_to_global_dir(self, project_path: Path) -> None:
         """Copy result files from project directory to global results directory."""

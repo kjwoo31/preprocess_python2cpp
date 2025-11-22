@@ -97,6 +97,33 @@ img_imread: |
       return img;
   }
 
+img_cvtColor: |
+  inline Image cvtColor(const Image& src, int code) {
+      if (code == 0) {  // COLOR_BGR2GRAY
+          Image dst(src.height, src.width, 1);
+          for (int y = 0; y < src.height; ++y) {
+              for (int x = 0; x < src.width; ++x) {
+                  uint8_t b = src.at(y, x, 0);
+                  uint8_t g = src.at(y, x, 1);
+                  uint8_t r = src.at(y, x, 2);
+                  dst.at(y, x, 0) = static_cast<uint8_t>(0.114 * b + 0.587 * g + 0.299 * r);
+              }
+          }
+          return dst;
+      } else if (code == 1 || code == 2) {  // COLOR_BGR2RGB or COLOR_RGB2BGR
+          Image dst = src;
+          if (src.channels == 3) {
+              for (int y = 0; y < src.height; ++y) {
+                  for (int x = 0; x < src.width; ++x) {
+                      std::swap(dst.at(y, x, 0), dst.at(y, x, 2));
+                  }
+              }
+          }
+          return dst;
+      }
+      return src;
+  }
+
 img_cvt_color_bgr2rgb: |
   inline Image cvtColor_BGR2RGB(const Image& src) {
       Image dst = src;
@@ -136,4 +163,202 @@ img_reshape: |
       ImageF result(new_height, new_width, 1);
       result.data = img.data;
       return result;
+  }
+
+img_cvt_color_bgr2gray: |
+  inline Image cvtColor_BGR2GRAY(const Image& src) {
+      Image dst(src.height, src.width, 1);
+      for (int y = 0; y < src.height; ++y) {
+          for (int x = 0; x < src.width; ++x) {
+              uint8_t b = src.at(y, x, 0);
+              uint8_t g = src.at(y, x, 1);
+              uint8_t r = src.at(y, x, 2);
+              dst.at(y, x, 0) = static_cast<uint8_t>(0.114 * b + 0.587 * g + 0.299 * r);
+          }
+      }
+      return dst;
+  }
+
+img_gaussian_blur: |
+  inline Image GaussianBlur(const Image& src, int ksize_w, int ksize_h, double sigma) {
+      Image dst = src;
+      if (ksize_w == 5 && ksize_h == 5 && sigma == 0) {
+          const float kernel[5][5] = {
+              {1, 4, 6, 4, 1},
+              {4, 16, 24, 16, 4},
+              {6, 24, 36, 24, 6},
+              {4, 16, 24, 16, 4},
+              {1, 4, 6, 4, 1}
+          };
+          const float sum = 256.0f;
+
+          for (int y = 2; y < src.height - 2; ++y) {
+              for (int x = 2; x < src.width - 2; ++x) {
+                  for (int c = 0; c < src.channels; ++c) {
+                      float value = 0.0f;
+                      for (int ky = 0; ky < 5; ++ky) {
+                          for (int kx = 0; kx < 5; ++kx) {
+                              value += src.at(y + ky - 2, x + kx - 2, c) * kernel[ky][kx];
+                          }
+                      }
+                      dst.at(y, x, c) = static_cast<uint8_t>(value / sum);
+                  }
+              }
+          }
+      }
+      return dst;
+  }
+
+img_threshold: |
+  inline std::pair<double, Image> threshold(const Image& src, double thresh, double maxval, int type) {
+      Image dst(src.height, src.width, src.channels);
+      for (int y = 0; y < src.height; ++y) {
+          for (int x = 0; x < src.width; ++x) {
+              for (int c = 0; c < src.channels; ++c) {
+                  uint8_t val = src.at(y, x, c);
+                  if (type == 0) {  // THRESH_BINARY
+                      dst.at(y, x, c) = val > thresh ? static_cast<uint8_t>(maxval) : 0;
+                  } else {
+                      dst.at(y, x, c) = val;
+                  }
+              }
+          }
+      }
+      return std::make_pair(thresh, dst);
+  }
+
+img_canny: |
+  inline Image Canny(const Image& src, double threshold1, double threshold2) {
+      Image dst(src.height, src.width, 1);
+      for (int y = 1; y < src.height - 1; ++y) {
+          for (int x = 1; x < src.width - 1; ++x) {
+              int gx = -src.at(y-1, x-1, 0) + src.at(y-1, x+1, 0)
+                       -2*src.at(y, x-1, 0) + 2*src.at(y, x+1, 0)
+                       -src.at(y+1, x-1, 0) + src.at(y+1, x+1, 0);
+              int gy = -src.at(y-1, x-1, 0) - 2*src.at(y-1, x, 0) - src.at(y-1, x+1, 0)
+                       +src.at(y+1, x-1, 0) + 2*src.at(y+1, x, 0) + src.at(y+1, x+1, 0);
+              double gradient = std::sqrt(gx*gx + gy*gy);
+              dst.at(y, x, 0) = (gradient > threshold2) ? 255 : 0;
+          }
+      }
+      return dst;
+  }
+
+img_operator_mul: |
+  inline ImageF operator*(const ImageF& img, double scalar) {
+      ImageF result = img;
+      for (auto& val : result.data) {
+          val *= static_cast<float>(scalar);
+      }
+      return result;
+  }
+
+img_operator_add: |
+  inline ImageF operator+(const ImageF& img, double scalar) {
+      ImageF result = img;
+      for (auto& val : result.data) {
+          val += static_cast<float>(scalar);
+      }
+      return result;
+  }
+
+img_operator_sub: |
+  inline ImageF operator-(const ImageF& img, double scalar) {
+      ImageF result = img;
+      for (auto& val : result.data) {
+          val -= static_cast<float>(scalar);
+      }
+      return result;
+  }
+
+img_transpose: |
+  inline ImageF transpose(const ImageF& img, int axis0, int axis1, int axis2) {
+      if (axis0 == 2 && axis1 == 0 && axis2 == 1) {
+          ImageF result(img.channels, img.height, img.width);
+          for (int c = 0; c < img.channels; ++c) {
+              for (int y = 0; y < img.height; ++y) {
+                  for (int x = 0; x < img.width; ++x) {
+                      size_t src_idx = (y * img.width + x) * img.channels + c;
+                      size_t dst_idx = (c * img.height + y) * img.width + x;
+                      result.data[dst_idx] = img.data[src_idx];
+                  }
+              }
+          }
+          return result;
+      }
+      return img;
+  }
+
+img_mean: |
+  inline ImageF mean(const ImageF& img) {
+      ImageF result(1, 1, img.channels);
+      for (int c = 0; c < img.channels; ++c) {
+          float sum = 0.0f;
+          int count = 0;
+          for (int y = 0; y < img.height; ++y) {
+              for (int x = 0; x < img.width; ++x) {
+                  size_t idx = (y * img.width + x) * img.channels + c;
+                  sum += img.data[idx];
+                  count++;
+              }
+          }
+          result.data[c] = sum / count;
+      }
+      return result;
+  }
+
+img_std: |
+  inline ImageF std(const ImageF& img) {
+      ImageF mean_vals = mean(img);
+      ImageF result(1, 1, img.channels);
+      for (int c = 0; c < img.channels; ++c) {
+          float sum_sq = 0.0f;
+          int count = 0;
+          for (int y = 0; y < img.height; ++y) {
+              for (int x = 0; x < img.width; ++x) {
+                  size_t idx = (y * img.width + x) * img.channels + c;
+                  float diff = img.data[idx] - mean_vals.data[c];
+                  sum_sq += diff * diff;
+                  count++;
+              }
+          }
+          result.data[c] = std::sqrt(sum_sq / count);
+      }
+      return result;
+  }
+
+img_clip: |
+  inline ImageF clip(const ImageF& img, float min_val, float max_val) {
+      ImageF result = img;
+      for (auto& val : result.data) {
+          val = std::max(min_val, std::min(val, max_val));
+      }
+      return result;
+  }
+
+img_astype_uint8: |
+  inline Image astype_uint8(const ImageF& img) {
+      Image result(img.height, img.width, img.channels);
+      for (size_t i = 0; i < img.data.size(); ++i) {
+          result.data[i] = static_cast<uint8_t>(std::max(0.0f, std::min(255.0f, img.data[i])));
+      }
+      return result;
+  }
+
+img_max: |
+  inline float max(const Image& img) {
+      float max_val = 0.0f;
+      for (const auto& val : img.data) {
+          max_val = std::max(max_val, static_cast<float>(val));
+      }
+      return max_val;
+  }
+
+img_min: |
+  inline float min(const Image& img) {
+      float min_val = 255.0f;
+      for (const auto& val : img.data) {
+          min_val = std::min(min_val, static_cast<float>(val));
+      }
+      return min_val;
   }

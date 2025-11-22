@@ -23,19 +23,29 @@ functions:
   - python_lib: cv2
     python_func: cvtColor
     cpp_lib: img
-    cpp_func: cvtColor_BGR2RGB
+    cpp_func: cvtColor
     cpp_headers: []
     is_method: false
-    inline_impl: "img_cvt_color_bgr2rgb"
-    notes: "Converts BGR to RGB"
+    inline_impl: "img_cvtColor"
+    notes: "Color space conversion (dispatches based on code)"
 
   - python_lib: cv2
     python_func: GaussianBlur
     cpp_lib: img
     cpp_func: GaussianBlur
-    cpp_headers: ["img/filter.h"]
+    cpp_headers: []
     is_method: false
-    notes: "Applies Gaussian blur (modular: img/filter.h)"
+    inline_impl: "img_gaussian_blur"
+    notes: "Applies Gaussian blur (5x5 kernel)"
+
+  - python_lib: cv2
+    python_func: threshold
+    cpp_lib: img
+    cpp_func: threshold
+    cpp_headers: []
+    is_method: false
+    inline_impl: "img_threshold"
+    notes: "Binary threshold operation"
 
   - python_lib: cv2
     python_func: bilateralFilter
@@ -60,9 +70,10 @@ functions:
     python_func: Canny
     cpp_lib: img
     cpp_func: Canny
-    cpp_headers: ["img/edge.h"]
+    cpp_headers: []
     is_method: false
-    notes: "Canny edge detection (modular: img/edge.h)"
+    inline_impl: "img_canny"
+    notes: "Canny edge detection (Sobel-based)"
 
   - python_lib: cv2
     python_func: Sobel
@@ -105,21 +116,28 @@ constants:
     cpp_value: "-1"
     notes: "Unchanged image read mode"
 
-  # Color conversion codes
+  # Color conversion codes (not used in inline impl, but kept for compatibility)
   - python_lib: cv2
     python_const: COLOR_BGR2RGB
-    cpp_value: "COLOR_BGR2RGB"
+    cpp_value: "1"
     notes: "BGR to RGB color conversion code"
 
   - python_lib: cv2
     python_const: COLOR_RGB2BGR
-    cpp_value: "COLOR_RGB2BGR"
+    cpp_value: "2"
     notes: "RGB to BGR color conversion code"
 
   - python_lib: cv2
     python_const: COLOR_BGR2GRAY
-    cpp_value: "COLOR_BGR2GRAY"
+    cpp_value: "0"
+    inline_impl: "img_cvt_color_bgr2gray"
     notes: "BGR to grayscale conversion code"
+
+  # Threshold types
+  - python_lib: cv2
+    python_const: THRESH_BINARY
+    cpp_value: "0"
+    notes: "Binary threshold type"
 
   # Data types for Sobel filter
   - python_lib: cv2

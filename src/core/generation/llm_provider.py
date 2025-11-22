@@ -68,26 +68,45 @@ class LLMCodeGenerator:
     def _build_prompt(self, operation: IROperation, context: dict[str, Any]) -> str:
         """Build a prompt for the LLM using few-shot learning."""
         sections = [
-            "You are an expert C++ programmer tasked with converting Python preprocessing operations to C++.",
+            "You are an expert C++ programmer specializing in Python-to-C++ conversion for data preprocessing pipelines.",
             "",
             self._build_prompt_context(),
-            self._build_prompt_operation(operation, context),
-            self._build_prompt_task(operation),
-            self._build_prompt_examples(operation),
-            "## Your C++ Code",
-            "Generate the C++ code below (only code, no explanations):",
             "",
-            "```cpp",
+            self._build_prompt_operation(operation, context),
+            "",
+            self._build_prompt_task(operation),
+            "",
+            self._build_prompt_examples(operation),
+            "",
+            "## Output Requirements",
+            "Generate ONLY the C++ code that implements the operation above.",
+            "- Do NOT include explanations, comments about what you're doing, or markdown",
+            "- Do NOT wrap in ```cpp blocks (I will do that)",
+            "- Include necessary variable declarations",
+            "- Ensure the code compiles and follows all guidelines above",
+            "",
+            "Your C++ code:",
         ]
         return "\n".join(sections)
 
     def _build_prompt_context(self) -> str:
         """Build context section of the prompt."""
         return """## Context
-You are converting a Python data preprocessing pipeline to C++. The available C++ libraries are:
-- OpenCV (cv::) for image processing
-- Eigen for linear algebra (NumPy equivalent)
-- Standard C++17"""
+You are converting a Python data preprocessing pipeline to Modern C++17.
+
+### Available C++ Libraries
+- **OpenCV (cv::)**: Image processing, computer vision operations
+- **Eigen**: Linear algebra, NumPy-equivalent matrix operations
+- **STL (C++17)**: Standard library containers and algorithms
+- **stb_image.h**: Lightweight image I/O (header-only, already included)
+
+### Type Mappings
+- `numpy.ndarray` → `cv::Mat` (for image/array data)
+- `numpy.ndarray` → `Eigen::MatrixXd` (for mathematical operations)
+- `list[T]` → `std::vector<T>`
+- `tuple[T1, T2]` → `std::pair<T1, T2>` or `std::tuple<T1, T2>`
+- `str` → `std::string`
+- `int`, `float`, `bool` → native C++ types"""
 
     def _build_prompt_operation(
         self, operation: IROperation, context: dict[str, Any]
@@ -106,34 +125,104 @@ The operation to convert is represented in JSON (Intermediate Representation):
     def _build_prompt_task(self, operation: IROperation) -> str:
         """Build task guidelines section of the prompt."""
         return f"""## Task
-Generate ONLY the C++ code to implement this operation. Follow these guidelines:
+Generate ONLY the C++ code to implement this operation.
 
-1. Use modern C++17 features
-2. Prefer OpenCV cv::Mat for image/array data
-3. Use Eigen for mathematical operations if needed
-4. Ensure memory safety (use smart pointers if needed)
-5. Add brief inline comments explaining the logic
-6. The output variable name must be: {operation.output}"""
+### Required Guidelines (MUST follow)
+1. **Output variable name**: MUST be `{operation.output}`
+2. **Modern C++17**: Use auto, structured bindings, std::optional when appropriate
+3. **RAII principle**: All resources must use RAII (no manual new/delete)
+4. **No raw pointers**: Use `std::unique_ptr`, `std::shared_ptr`, or references
+5. **Const correctness**: Mark immutable variables and parameters as `const`
+6. **Type safety**: Prefer `static_cast<>` over C-style casts
+
+### Data Structure Preferences
+- Image/array data → `cv::Mat` (OpenCV)
+- Mathematical operations → `Eigen::MatrixXd` or `cv::Mat`
+- Collections → `std::vector<T>`, `std::array<T, N>`
+- Strings → `std::string`
+
+### Code Quality
+- Self-documenting: Use clear, descriptive variable names
+- Minimal comments: Only explain "why", not "what"
+- Error handling: Check for edge cases (null pointers, empty arrays, invalid dimensions)
+- No magic numbers: Use named constants
+
+### Forbidden Practices
+- ❌ Raw pointers for ownership: `T* ptr = new T()`
+- ❌ C-style casts: `(int)value`
+- ❌ Manual memory management: `delete ptr`
+- ❌ Global variables or static state
+- ❌ `using namespace std;` in headers"""
 
     def _build_prompt_examples(self, operation: IROperation) -> str:
         """Build examples section of the prompt."""
-        return f"""## Examples of Similar Conversions
+        output_var = operation.output
+        return f"""## Examples of Correct Conversions
 
-Example 1 - Python to C++:
-Python: `img = cv2.GaussianBlur(img, (5, 5), 0)`
-C++:
-```cpp
-cv::Mat {operation.output};
-cv::GaussianBlur(img, {operation.output}, cv::Size(5, 5), 0);
+### Example 1: Image Processing (OpenCV)
+**Python:**
+```python
+img = cv2.resize(image, (224, 224))
 ```
 
-Example 2 - Python to C++:
-Python: `result = np.mean(array, axis=0)`
-C++:
+**C++ (Correct):**
 ```cpp
-cv::Mat {operation.output};
-cv::reduce(array, {operation.output}, 0, cv::REDUCE_AVG);
-```"""
+cv::Mat {output_var};
+cv::resize(image, {output_var}, cv::Size(224, 224), 0, 0, cv::INTER_LINEAR);
+```
+
+### Example 2: Color Conversion
+**Python:**
+```python
+rgb_img = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB)
+```
+
+**C++ (Correct):**
+```cpp
+cv::Mat {output_var};
+cv::cvtColor(bgr_img, {output_var}, cv::COLOR_BGR2RGB);
+```
+
+### Example 3: Array Operations with Type Conversion
+**Python:**
+```python
+normalized = img.astype(np.float32) / 255.0
+```
+
+**C++ (Correct):**
+```cpp
+cv::Mat {output_var};
+image.convertTo({output_var}, CV_32F, 1.0 / 255.0);
+```
+
+### Example 4: Conditional Operations
+**Python:**
+```python
+result = x if x > 0 else 0
+```
+
+**C++ (Correct):**
+```cpp
+const auto {output_var} = std::max(x, 0);
+```
+
+### Example 5: Array Reduction
+**Python:**
+```python
+mean_val = np.mean(array, axis=0)
+```
+
+**C++ (Correct):**
+```cpp
+cv::Mat {output_var};
+cv::reduce(array, {output_var}, 0, cv::REDUCE_AVG);
+```
+
+### Common Patterns
+- **Shape operations**: `cv::Mat::reshape()`, `cv::transpose()`
+- **Element-wise ops**: `cv::add()`, `cv::subtract()`, `cv::multiply()`, `cv::divide()`
+- **Aggregations**: `cv::reduce()` with `cv::REDUCE_SUM`, `cv::REDUCE_AVG`, `cv::REDUCE_MAX`
+- **Type conversions**: `mat.convertTo(dest, type, scale, offset)`"""
 
     def _call_llm(self, prompt: str) -> str | None:
         """
@@ -151,18 +240,22 @@ cv::reduce(array, {operation.output}, 0, cv::REDUCE_AVG);
             )
 
         try:
-            # Using OpenAI Chat API (v1.0.0+)
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are an expert C++ programmer specializing in data preprocessing code.",
+                        "content": (
+                            "You are an expert C++ programmer specializing in converting Python "
+                            "data preprocessing code to Modern C++17. You strictly follow RAII, "
+                            "const correctness, and never use raw pointers for ownership. "
+                            "You write clean, self-documenting code that adheres to best practices."
+                        ),
                     },
                     {"role": "user", "content": prompt},
                 ],
-                temperature=0.1,  # Low temperature for consistent code generation
-                max_tokens=500,
+                temperature=0.0,
+                max_tokens=800,
             )
 
             return response.choices[0].message.content
@@ -205,23 +298,37 @@ cv::reduce(array, {operation.output}, 0, cv::REDUCE_AVG);
 
     def validate_generated_code(self, code: str) -> bool:
         """
-        Basic validation of generated C++ code.
+        Validate generated C++ code for quality and safety.
 
         Args:
             code: Generated C++ code
 
         Returns:
-            True if code appears valid
+            True if code appears valid and safe
         """
-        # Basic syntax checks
         if not code.strip():
             return False
 
-        # Should contain C++ syntax
-        cpp_keywords = ["cv::", "Mat", "std::", "Eigen::", "=", ";"]
-        has_cpp = any(keyword in code for keyword in cpp_keywords)
+        cpp_indicators = ["cv::", "Mat", "std::", "Eigen::", "=", ";"]
+        has_cpp = any(indicator in code for indicator in cpp_indicators)
 
-        return has_cpp
+        if not has_cpp:
+            return False
+
+        forbidden_patterns = [
+            "new ",
+            "delete ",
+            " malloc(",
+            " free(",
+            "using namespace std",
+        ]
+        has_forbidden = any(pattern in code for pattern in forbidden_patterns)
+
+        if has_forbidden:
+            print(f"    ⚠️  Generated code contains forbidden patterns: {code[:100]}...")
+            return False
+
+        return True
 
 
 class AnthropicLLMGenerator(LLMCodeGenerator):
@@ -260,12 +367,18 @@ class AnthropicLLMGenerator(LLMCodeGenerator):
             ) from e
 
     def _call_llm(self, prompt: str) -> str | None:
-        """Call Anthropic Claude API"""
+        """Call Anthropic Claude API."""
         try:
             message = self.client.messages.create(
                 model=self.model,
                 max_tokens=1024,
-                temperature=0.1,
+                temperature=0.0,
+                system=(
+                    "You are an expert C++ programmer specializing in converting Python "
+                    "data preprocessing code to Modern C++17. You strictly follow RAII, "
+                    "const correctness, and never use raw pointers for ownership. "
+                    "You write clean, self-documenting code that adheres to best practices."
+                ),
                 messages=[{"role": "user", "content": prompt}],
             )
 
@@ -332,12 +445,18 @@ class VertexAILLMGenerator(LLMCodeGenerator):
             raise RuntimeError(f"Failed to initialize Vertex AI client: {e}") from e
 
     def _call_llm(self, prompt: str) -> str | None:
-        """Call Anthropic Claude via Vertex AI"""
+        """Call Anthropic Claude via Vertex AI."""
         try:
             message = self.client.messages.create(
                 model=self.model,
                 max_tokens=1024,
-                temperature=0.1,
+                temperature=0.0,
+                system=(
+                    "You are an expert C++ programmer specializing in converting Python "
+                    "data preprocessing code to Modern C++17. You strictly follow RAII, "
+                    "const correctness, and never use raw pointers for ownership. "
+                    "You write clean, self-documenting code that adheres to best practices."
+                ),
                 messages=[{"role": "user", "content": prompt}],
             )
 

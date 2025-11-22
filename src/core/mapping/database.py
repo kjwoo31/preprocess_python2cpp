@@ -206,8 +206,22 @@ class MappingDatabase:
         Returns:
             ConstantMapping if found, None otherwise
         """
-        key = f"{python_lib}.{python_const}"
-        return self.constants.get(key)
+        # Handle library aliases (np -> numpy)
+        lib_aliases = {
+            "np": "numpy",
+            "cv": "cv2",
+        }
+        canonical_lib = lib_aliases.get(python_lib, python_lib)
+
+        key = f"{canonical_lib}.{python_const}"
+        constant = self.constants.get(key)
+
+        # Also try original name if canonical lookup failed
+        if not constant and canonical_lib != python_lib:
+            key = f"{python_lib}.{python_const}"
+            constant = self.constants.get(key)
+
+        return constant
 
     def get_mapping(self, python_lib: str, python_func: str) -> FunctionMapping | None:
         """
@@ -220,8 +234,22 @@ class MappingDatabase:
         Returns:
             FunctionMapping if found, None otherwise
         """
-        key = f"{python_lib}.{python_func}"
-        return self.mappings.get(key)
+        # Handle library aliases (np -> numpy)
+        lib_aliases = {
+            "np": "numpy",
+            "cv": "cv2",
+        }
+        canonical_lib = lib_aliases.get(python_lib, python_lib)
+
+        key = f"{canonical_lib}.{python_func}"
+        mapping = self.mappings.get(key)
+
+        # Also try original name if canonical lookup failed
+        if not mapping and canonical_lib != python_lib:
+            key = f"{python_lib}.{python_func}"
+            mapping = self.mappings.get(key)
+
+        return mapping
 
     def get_all_mappings(self) -> list[FunctionMapping]:
         """Get all mappings in the database"""

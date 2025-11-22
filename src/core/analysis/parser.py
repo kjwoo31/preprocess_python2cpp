@@ -11,9 +11,9 @@ class ImportInfo:
 
     module: str
     alias: str | None = None
-    imported_names: list[str] = None
+    imported_names: list[str] | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.imported_names is None:
             self.imported_names = []
 
@@ -67,7 +67,7 @@ class PythonASTParser:
         except SyntaxError as e:
             raise SyntaxError(f"Failed to parse Python code: {e}") from e
 
-    def _analyze_tree(self, tree: ast.Module):
+    def _analyze_tree(self, tree: ast.Module) -> None:
         """Analyze AST tree and extract information."""
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
@@ -77,18 +77,18 @@ class PythonASTParser:
             elif isinstance(node, ast.FunctionDef):
                 self._extract_function(node)
 
-    def _extract_import(self, node: ast.Import):
+    def _extract_import(self, node: ast.Import) -> None:
         """Extract information from import statement."""
         for alias in node.names:
             self.imports.append(ImportInfo(module=alias.name, alias=alias.asname))
 
-    def _extract_import_from(self, node: ast.ImportFrom):
+    def _extract_import_from(self, node: ast.ImportFrom) -> None:
         """Extract information from 'from X import Y' statement."""
         module = node.module or ""
         imported_names = [alias.name for alias in node.names]
         self.imports.append(ImportInfo(module=module, imported_names=imported_names))
 
-    def _extract_function(self, node: ast.FunctionDef):
+    def _extract_function(self, node: ast.FunctionDef) -> None:
         """Extract information from function definition."""
         args = [arg.arg for arg in node.args.args]
         decorators = [self._get_decorator_name(dec) for dec in node.decorator_list]
@@ -125,7 +125,7 @@ class PythonASTParser:
             libraries.add(base_lib)
         return libraries
 
-    def get_function_calls(self, tree: ast.Module) -> list[dict[str, Any]]:
+    def get_function_calls(self, tree: ast.Module) -> list[dict[str, str | list | int]]:
         """
         Extract all function calls from the AST.
 
@@ -135,11 +135,11 @@ class PythonASTParser:
         Returns:
             List of dictionaries containing function call information
         """
-        calls = []
+        calls: list[dict[str, str | list | int]] = []
 
         class CallVisitor(ast.NodeVisitor):
-            def visit_Call(self, node):
-                call_info = {
+            def visit_Call(self, node: ast.Call) -> None:
+                call_info: dict[str, str | list | int] = {
                     "func": ast.unparse(node.func),
                     "args": [ast.unparse(arg) for arg in node.args],
                     "kwargs": {kw.arg: ast.unparse(kw.value) for kw in node.keywords},
@@ -152,7 +152,7 @@ class PythonASTParser:
         visitor.visit(tree)
         return calls
 
-    def get_assignments(self, tree: ast.Module) -> list[dict[str, Any]]:
+    def get_assignments(self, tree: ast.Module) -> list[dict[str, str | int | None]]:
         """
         Extract all assignment statements from the AST.
 
@@ -162,12 +162,12 @@ class PythonASTParser:
         Returns:
             List of dictionaries containing assignment information
         """
-        assignments = []
+        assignments: list[dict[str, str | int | None]] = []
 
         class AssignVisitor(ast.NodeVisitor):
-            def visit_Assign(self, node):
+            def visit_Assign(self, node: ast.Assign) -> None:
                 for target in node.targets:
-                    assign_info = {
+                    assign_info: dict[str, str | int] = {
                         "target": ast.unparse(target),
                         "value": ast.unparse(node.value),
                         "lineno": node.lineno,
@@ -175,8 +175,8 @@ class PythonASTParser:
                     assignments.append(assign_info)
                 self.generic_visit(node)
 
-            def visit_AnnAssign(self, node):
-                assign_info = {
+            def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
+                assign_info: dict[str, str | int | None] = {
                     "target": ast.unparse(node.target),
                     "value": ast.unparse(node.value) if node.value else None,
                     "annotation": ast.unparse(node.annotation),

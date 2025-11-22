@@ -1,0 +1,1229 @@
+======================================================================
+Atomic Function Performance Test Suite
+======================================================================
+Total functions to test: 25
+
+======================================================================
+Testing: test_imread (OpenCV)
+======================================================================
+✓ Loaded 21 C++ implementations
+Generated C++ file: .build/atomic/test_imread/test_imread.cpp
+Generated CMake file: .build/atomic/test_imread/CMakeLists.txt
+Copied stb_image.h: .build/atomic/test_imread/stb_image.h
+Copied stb_image_write.h: .build/atomic/test_imread/stb_image_write.h
+Generated validator header: .build/atomic/test_imread/validator.h
+Generated README: .build/atomic/test_imread/README.md
+✓ C++ project generated: .build/atomic/test_imread
+
+======================================================================
+VALIDATING: test_imread
+======================================================================
+
+🔨 Building C++ code...
+✅ Build successful
+
+🐍 Running Python version...
+✅ Python execution: 10.463 ms
+
+⚙️  Running C++ version...
+✅ C++ execution: 68.256 ms
+
+🔍 Comparing results...
+
+======================================================================
+VALIDATION RESULTS
+======================================================================
+
+📊 Numerical Accuracy:
+  Shape: (480, 640, 3)
+  Total elements: 921,600
+  Match percentage: 92.96%
+  Status: ⚠️  DIFFERENCES DETECTED
+
+  Absolute differences:
+    Max: 3.000000e+00
+    Mean: 8.702474e-02
+
+  Relative differences:
+    Max: 2.000000e+10
+    Mean: 1.736111e+05
+
+  ⚠️  Dtype mismatch: Python uint8 vs C++ float32
+
+⚡ Performance Comparison:
+  Python execution time: 10.463 ms
+  C++ execution time: 68.256 ms
+  Speedup: 0.15x
+  ⚠️  C++ is slower (possible overhead)
+
+======================================================================
+
+============================================================
+Summary: 1 function(s) converted successfully
+============================================================
+  - .build/atomic/test_imread
+
+
+======================================================================
+Testing: test_imread_grayscale (OpenCV)
+======================================================================
+✓ Loaded 21 C++ implementations
+✓ Loaded 21 C++ implementations
+Generated C++ file: .build/atomic/test_imread_grayscale/test_imread_grayscale.cpp
+Generated CMake file: .build/atomic/test_imread_grayscale/CMakeLists.txt
+Copied stb_image.h: .build/atomic/test_imread_grayscale/stb_image.h
+Copied stb_image_write.h: .build/atomic/test_imread_grayscale/stb_image_write.h
+Generated validator header: .build/atomic/test_imread_grayscale/validator.h
+Generated README: .build/atomic/test_imread_grayscale/README.md
+✓ C++ project generated: .build/atomic/test_imread_grayscale
+
+======================================================================
+VALIDATING: test_imread_grayscale
+======================================================================
+
+🔨 Building C++ code...
+✅ Build successful
+
+🐍 Running Python version...
+✅ Python execution: 10.862 ms
+
+⚙️  Running C++ version...
+✅ C++ execution: 78.994 ms
+
+🔍 Comparing results...
+
+======================================================================
+VALIDATION RESULTS
+======================================================================
+
+📊 Numerical Accuracy:
+  Shape: (480, 640)
+  Total elements: 307,200
+  Match percentage: 46.30%
+  Status: ⚠️  DIFFERENCES DETECTED
+
+  Absolute differences:
+    Max: 1.400000e+01
+    Mean: 5.588053e-01
+
+  Relative differences:
+    Max: 5.000000e+10
+    Mean: 1.953125e+05
+
+  ⚠️  Dtype mismatch: Python uint8 vs C++ float32
+
+⚡ Performance Comparison:
+  Python execution time: 10.862 ms
+  C++ execution time: 78.994 ms
+  Speedup: 0.14x
+  ⚠️  C++ is slower (possible overhead)
+
+======================================================================
+
+============================================================
+Summary: 1 function(s) converted successfully
+============================================================
+  - .build/atomic/test_imread_grayscale
+
+
+======================================================================
+Testing: test_resize (OpenCV)
+======================================================================
+✓ Loaded 21 C++ implementations
+Generated C++ file: .build/atomic/test_resize/test_resize.cpp
+Generated CMake file: .build/atomic/test_resize/CMakeLists.txt
+Copied stb_image.h: .build/atomic/test_resize/stb_image.h
+Copied stb_image_write.h: .build/atomic/test_resize/stb_image_write.h
+Generated validator header: .build/atomic/test_resize/validator.h
+Generated README: .build/atomic/test_resize/README.md
+✓ C++ project generated: .build/atomic/test_resize
+
+======================================================================
+VALIDATING: test_resize
+======================================================================
+
+🔨 Building C++ code...
+✅ Build successful
+
+🐍 Running Python version...
+✅ Python execution: 10.558 ms
+
+⚙️  Running C++ version...
+✅ C++ execution: 60.339 ms
+
+🔍 Comparing results...
+
+======================================================================
+VALIDATION RESULTS
+======================================================================
+
+📊 Numerical Accuracy:
+  Shape: (224, 224, 3)
+  Total elements: 150,528
+  Match percentage: 82.80%
+  Status: ⚠️  DIFFERENCES DETECTED
+
+  Absolute differences:
+    Max: 3.000000e+00
+    Mean: 1.783987e-01
+
+  Relative differences:
+    Max: 1.250000e-01
+    Mean: 1.566355e-03
+
+  ⚠️  Dtype mismatch: Python uint8 vs C++ float32
+
+⚡ Performance Comparison:
+  Python execution time: 10.558 ms
+  C++ execution time: 60.339 ms
+  Speedup: 0.17x
+  ⚠️  C++ is slower (possible overhead)
+
+======================================================================
+
+============================================================
+Summary: 1 function(s) converted successfully
+============================================================
+  - .build/atomic/test_resize
+
+
+======================================================================
+Testing: test_cvtColor (OpenCV)
+======================================================================
+✓ Loaded 21 C++ implementations
+✓ Loaded 21 C++ implementations
+Generated C++ file: .build/atomic/test_cvtColor/test_cvtColor.cpp
+Generated CMake file: .build/atomic/test_cvtColor/CMakeLists.txt
+Copied stb_image.h: .build/atomic/test_cvtColor/stb_image.h
+Copied stb_image_write.h: .build/atomic/test_cvtColor/stb_image_write.h
+Generated validator header: .build/atomic/test_cvtColor/validator.h
+Generated README: .build/atomic/test_cvtColor/README.md
+✓ C++ project generated: .build/atomic/test_cvtColor
+
+======================================================================
+VALIDATING: test_cvtColor
+======================================================================
+
+🔨 Building C++ code...
+✅ Build successful
+
+🐍 Running Python version...
+✅ Python execution: 10.115 ms
+
+⚙️  Running C++ version...
+✅ C++ execution: 69.354 ms
+
+🔍 Comparing results...
+
+======================================================================
+VALIDATION RESULTS
+======================================================================
+
+📊 Numerical Accuracy:
+  Shape: (480, 640, 3)
+  Total elements: 921,600
+  Match percentage: 92.96%
+  Status: ⚠️  DIFFERENCES DETECTED
+
+  Absolute differences:
+    Max: 3.000000e+00
+    Mean: 8.702474e-02
+
+  Relative differences:
+    Max: 2.000000e+10
+    Mean: 1.736111e+05
+
+  ⚠️  Dtype mismatch: Python uint8 vs C++ float32
+
+⚡ Performance Comparison:
+  Python execution time: 10.115 ms
+  C++ execution time: 69.354 ms
+  Speedup: 0.15x
+  ⚠️  C++ is slower (possible overhead)
+
+======================================================================
+
+============================================================
+Summary: 1 function(s) converted successfully
+============================================================
+  - .build/atomic/test_cvtColor
+
+
+======================================================================
+Testing: test_cvtColor_gray (OpenCV)
+======================================================================
+✓ Loaded 21 C++ implementations
+✓ Loaded 21 C++ implementations
+Generated C++ file: .build/atomic/test_cvtColor_gray/test_cvtColor_gray.cpp
+Generated CMake file: .build/atomic/test_cvtColor_gray/CMakeLists.txt
+Copied stb_image.h: .build/atomic/test_cvtColor_gray/stb_image.h
+Copied stb_image_write.h: .build/atomic/test_cvtColor_gray/stb_image_write.h
+Generated validator header: .build/atomic/test_cvtColor_gray/validator.h
+Generated README: .build/atomic/test_cvtColor_gray/README.md
+✓ C++ project generated: .build/atomic/test_cvtColor_gray
+
+======================================================================
+VALIDATING: test_cvtColor_gray
+======================================================================
+
+🔨 Building C++ code...
+✅ Build successful
+
+🐍 Running Python version...
+✅ Python execution: 9.990 ms
+
+⚙️  Running C++ version...
+✅ C++ execution: 61.952 ms
+
+🔍 Comparing results...
+
+======================================================================
+VALIDATION RESULTS
+======================================================================
+
+📊 Numerical Accuracy:
+  Shape: (480, 640)
+  Total elements: 307,200
+  Match percentage: 46.64%
+  Status: ⚠️  DIFFERENCES DETECTED
+
+  Absolute differences:
+    Max: 2.000000e+00
+    Mean: 5.387858e-01
+
+  Relative differences:
+    Max: 2.500000e-01
+    Mean: 5.340668e-03
+
+  ⚠️  Dtype mismatch: Python uint8 vs C++ float32
+
+⚡ Performance Comparison:
+  Python execution time: 9.990 ms
+  C++ execution time: 61.952 ms
+  Speedup: 0.16x
+  ⚠️  C++ is slower (possible overhead)
+
+======================================================================
+
+============================================================
+Summary: 1 function(s) converted successfully
+============================================================
+  - .build/atomic/test_cvtColor_gray
+
+
+======================================================================
+Testing: test_GaussianBlur (OpenCV)
+======================================================================
+✓ Loaded 21 C++ implementations
+Generated C++ file: .build/atomic/test_GaussianBlur/test_GaussianBlur.cpp
+Generated CMake file: .build/atomic/test_GaussianBlur/CMakeLists.txt
+Copied stb_image.h: .build/atomic/test_GaussianBlur/stb_image.h
+Copied stb_image_write.h: .build/atomic/test_GaussianBlur/stb_image_write.h
+Generated validator header: .build/atomic/test_GaussianBlur/validator.h
+Generated README: .build/atomic/test_GaussianBlur/README.md
+✓ C++ project generated: .build/atomic/test_GaussianBlur
+
+======================================================================
+VALIDATING: test_GaussianBlur
+======================================================================
+
+🔨 Building C++ code...
+✅ Build successful
+
+🐍 Running Python version...
+✅ Python execution: 10.016 ms
+
+⚙️  Running C++ version...
+✅ C++ execution: 75.142 ms
+
+🔍 Comparing results...
+
+======================================================================
+VALIDATION RESULTS
+======================================================================
+
+📊 Numerical Accuracy:
+  Shape: (480, 640, 3)
+  Total elements: 921,600
+  Match percentage: 50.33%
+  Status: ⚠️  DIFFERENCES DETECTED
+
+  Absolute differences:
+    Max: 1.460000e+02
+    Mean: 1.007700e+00
+
+  Relative differences:
+    Max: 1.605634e+00
+    Mean: 8.103690e-03
+
+  ⚠️  Dtype mismatch: Python uint8 vs C++ float32
+
+⚡ Performance Comparison:
+  Python execution time: 10.016 ms
+  C++ execution time: 75.142 ms
+  Speedup: 0.13x
+  ⚠️  C++ is slower (possible overhead)
+
+======================================================================
+
+============================================================
+Summary: 1 function(s) converted successfully
+============================================================
+  - .build/atomic/test_GaussianBlur
+
+
+======================================================================
+Testing: test_threshold (OpenCV)
+======================================================================
+✓ Loaded 21 C++ implementations
+✓ Loaded 21 C++ implementations
+Generated C++ file: .build/atomic/test_threshold/test_threshold.cpp
+Generated CMake file: .build/atomic/test_threshold/CMakeLists.txt
+Copied stb_image.h: .build/atomic/test_threshold/stb_image.h
+Copied stb_image_write.h: .build/atomic/test_threshold/stb_image_write.h
+Generated validator header: .build/atomic/test_threshold/validator.h
+Generated README: .build/atomic/test_threshold/README.md
+✓ C++ project generated: .build/atomic/test_threshold
+
+======================================================================
+VALIDATING: test_threshold
+======================================================================
+
+🔨 Building C++ code...
+Make failed:
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_threshold/test_threshold.cpp: In function ‘auto test_threshold(const string&)’:
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_threshold/test_threshold.cpp:176:12: error: ‘thresh’ was not declared in this scope
+  176 |     return thresh;
+      |            ^~~~~~
+make[2]: *** [CMakeFiles/test_threshold.dir/build.make:76: CMakeFiles/test_threshold.dir/test_threshold.cpp.o] Error 1
+make[1]: *** [CMakeFiles/Makefile2:83: CMakeFiles/test_threshold.dir/all] Error 2
+make: *** [Makefile:136: all] Error 2
+
+❌ Build failed
+
+============================================================
+Summary: 1 function(s) converted successfully
+============================================================
+  - .build/atomic/test_threshold
+
+
+======================================================================
+Testing: test_Canny (OpenCV)
+======================================================================
+✓ Loaded 21 C++ implementations
+✓ Loaded 21 C++ implementations
+Generated C++ file: .build/atomic/test_Canny/test_Canny.cpp
+Generated CMake file: .build/atomic/test_Canny/CMakeLists.txt
+Copied stb_image.h: .build/atomic/test_Canny/stb_image.h
+Copied stb_image_write.h: .build/atomic/test_Canny/stb_image_write.h
+Generated validator header: .build/atomic/test_Canny/validator.h
+Generated README: .build/atomic/test_Canny/README.md
+✓ C++ project generated: .build/atomic/test_Canny
+
+======================================================================
+VALIDATING: test_Canny
+======================================================================
+
+🔨 Building C++ code...
+✅ Build successful
+
+🐍 Running Python version...
+✅ Python execution: 11.561 ms
+
+⚙️  Running C++ version...
+✅ C++ execution: 66.773 ms
+
+🔍 Comparing results...
+
+======================================================================
+VALIDATION RESULTS
+======================================================================
+
+📊 Numerical Accuracy:
+  Shape: (480, 640)
+  Total elements: 307,200
+  Match percentage: 74.77%
+  Status: ⚠️  DIFFERENCES DETECTED
+
+  Absolute differences:
+    Max: 2.550000e+02
+    Mean: 6.433935e+01
+
+  Relative differences:
+    Max: 2.550000e+12
+    Mean: 5.085391e+11
+
+  ⚠️  Dtype mismatch: Python uint8 vs C++ float32
+
+⚡ Performance Comparison:
+  Python execution time: 11.561 ms
+  C++ execution time: 66.773 ms
+  Speedup: 0.17x
+  ⚠️  C++ is slower (possible overhead)
+
+======================================================================
+
+============================================================
+Summary: 1 function(s) converted successfully
+============================================================
+  - .build/atomic/test_Canny
+
+
+======================================================================
+Testing: test_astype_float32 (NumPy)
+======================================================================
+✓ Loaded 21 C++ implementations
+✓ Loaded 21 C++ implementations
+Generated C++ file: .build/atomic/test_astype_float32/test_astype_float32.cpp
+Generated CMake file: .build/atomic/test_astype_float32/CMakeLists.txt
+Copied stb_image.h: .build/atomic/test_astype_float32/stb_image.h
+Copied stb_image_write.h: .build/atomic/test_astype_float32/stb_image_write.h
+Generated validator header: .build/atomic/test_astype_float32/validator.h
+Generated README: .build/atomic/test_astype_float32/README.md
+✓ C++ project generated: .build/atomic/test_astype_float32
+
+======================================================================
+VALIDATING: test_astype_float32
+======================================================================
+
+🔨 Building C++ code...
+Make failed:
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_astype_float32/test_astype_float32.cpp: In function ‘auto test_astype_float32(const string&)’:
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_astype_float32/test_astype_float32.cpp:175:24: error: ‘astype’ is not a member of ‘img’
+  175 |     auto result = img::astype(img, float);
+      |                        ^~~~~~
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_astype_float32/test_astype_float32.cpp:175:36: error: expected primary-expression before ‘float’
+  175 |     auto result = img::astype(img, float);
+      |                                    ^~~~~
+make[2]: *** [CMakeFiles/test_astype_float32.dir/build.make:76: CMakeFiles/test_astype_float32.dir/test_astype_float32.cpp.o] Error 1
+make[1]: *** [CMakeFiles/Makefile2:83: CMakeFiles/test_astype_float32.dir/all] Error 2
+make: *** [Makefile:136: all] Error 2
+
+❌ Build failed
+
+============================================================
+Summary: 1 function(s) converted successfully
+============================================================
+  - .build/atomic/test_astype_float32
+
+
+======================================================================
+Testing: test_astype_uint8 (NumPy)
+======================================================================
+✓ Loaded 21 C++ implementations
+✓ Loaded 21 C++ implementations
+Generated C++ file: .build/atomic/test_astype_uint8/test_astype_uint8.cpp
+Generated CMake file: .build/atomic/test_astype_uint8/CMakeLists.txt
+Copied stb_image.h: .build/atomic/test_astype_uint8/stb_image.h
+Copied stb_image_write.h: .build/atomic/test_astype_uint8/stb_image_write.h
+Generated validator header: .build/atomic/test_astype_uint8/validator.h
+Generated README: .build/atomic/test_astype_uint8/README.md
+✓ C++ project generated: .build/atomic/test_astype_uint8
+
+======================================================================
+VALIDATING: test_astype_uint8
+======================================================================
+
+🔨 Building C++ code...
+Make failed:
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_astype_uint8/test_astype_uint8.cpp: In function ‘auto test_astype_uint8(const string&)’:
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_astype_uint8/test_astype_uint8.cpp:178:24: error: ‘astype’ is not a member of ‘img’
+  178 |     auto result = img::astype(float_img * 255.0, uint8_t);
+      |                        ^~~~~~
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_astype_uint8/test_astype_uint8.cpp:178:41: error: no match for ‘operator*’ (operand types are ‘img::ImageF’ and ‘double’)
+  178 |     auto result = img::astype(float_img * 255.0, uint8_t);
+      |                               ~~~~~~~~~ ^ ~~~~~
+      |                               |           |
+      |                               img::ImageF double
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_astype_uint8/test_astype_uint8.cpp:178:57: error: expected primary-expression before ‘)’ token
+  178 |     auto result = img::astype(float_img * 255.0, uint8_t);
+      |                                                         ^
+make[2]: *** [CMakeFiles/test_astype_uint8.dir/build.make:76: CMakeFiles/test_astype_uint8.dir/test_astype_uint8.cpp.o] Error 1
+make[1]: *** [CMakeFiles/Makefile2:83: CMakeFiles/test_astype_uint8.dir/all] Error 2
+make: *** [Makefile:136: all] Error 2
+
+❌ Build failed
+
+============================================================
+Summary: 1 function(s) converted successfully
+============================================================
+  - .build/atomic/test_astype_uint8
+
+
+======================================================================
+Testing: test_divide_scalar (NumPy)
+======================================================================
+✓ Loaded 21 C++ implementations
+Generated C++ file: .build/atomic/test_divide_scalar/test_divide_scalar.cpp
+Generated CMake file: .build/atomic/test_divide_scalar/CMakeLists.txt
+Copied stb_image.h: .build/atomic/test_divide_scalar/stb_image.h
+Copied stb_image_write.h: .build/atomic/test_divide_scalar/stb_image_write.h
+Generated validator header: .build/atomic/test_divide_scalar/validator.h
+Generated README: .build/atomic/test_divide_scalar/README.md
+✓ C++ project generated: .build/atomic/test_divide_scalar
+
+======================================================================
+VALIDATING: test_divide_scalar
+======================================================================
+
+🔨 Building C++ code...
+✅ Build successful
+
+🐍 Running Python version...
+✅ Python execution: 11.856 ms
+
+⚙️  Running C++ version...
+✅ C++ execution: 67.344 ms
+
+🔍 Comparing results...
+
+======================================================================
+VALIDATION RESULTS
+======================================================================
+
+📊 Numerical Accuracy:
+  Shape: (480, 640, 3)
+  Total elements: 921,600
+  Match percentage: 92.96%
+  Status: ⚠️  DIFFERENCES DETECTED
+
+  Absolute differences:
+    Max: 1.176473e-02
+    Mean: 3.412735e-04
+
+  Relative differences:
+    Max: 7.843138e+07
+    Mean: 6.808282e+02
+
+⚡ Performance Comparison:
+  Python execution time: 11.856 ms
+  C++ execution time: 67.344 ms
+  Speedup: 0.18x
+  ⚠️  C++ is slower (possible overhead)
+
+======================================================================
+
+============================================================
+Summary: 1 function(s) converted successfully
+============================================================
+  - .build/atomic/test_divide_scalar
+
+
+======================================================================
+Testing: test_multiply_scalar (NumPy)
+======================================================================
+✓ Loaded 21 C++ implementations
+Generated C++ file: .build/atomic/test_multiply_scalar/test_multiply_scalar.cpp
+Generated CMake file: .build/atomic/test_multiply_scalar/CMakeLists.txt
+Copied stb_image.h: .build/atomic/test_multiply_scalar/stb_image.h
+Copied stb_image_write.h: .build/atomic/test_multiply_scalar/stb_image_write.h
+Generated validator header: .build/atomic/test_multiply_scalar/validator.h
+Generated README: .build/atomic/test_multiply_scalar/README.md
+✓ C++ project generated: .build/atomic/test_multiply_scalar
+
+======================================================================
+VALIDATING: test_multiply_scalar
+======================================================================
+
+🔨 Building C++ code...
+Make failed:
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_multiply_scalar/test_multiply_scalar.cpp: In function ‘auto test_multiply_scalar(const string&)’:
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_multiply_scalar/test_multiply_scalar.cpp:178:30: error: no match for ‘operator*’ (operand types are ‘img::ImageF’ and ‘double’)
+  178 |     auto result = normalized * 2.0;
+      |                   ~~~~~~~~~~ ^ ~~~
+      |                   |            |
+      |                   img::ImageF  double
+make[2]: *** [CMakeFiles/test_multiply_scalar.dir/build.make:76: CMakeFiles/test_multiply_scalar.dir/test_multiply_scalar.cpp.o] Error 1
+make[1]: *** [CMakeFiles/Makefile2:83: CMakeFiles/test_multiply_scalar.dir/all] Error 2
+make: *** [Makefile:136: all] Error 2
+
+❌ Build failed
+
+============================================================
+Summary: 1 function(s) converted successfully
+============================================================
+  - .build/atomic/test_multiply_scalar
+
+
+======================================================================
+Testing: test_reshape (NumPy)
+======================================================================
+✓ Loaded 21 C++ implementations
+✓ Loaded 21 C++ implementations
+Generated C++ file: .build/atomic/test_reshape/test_reshape.cpp
+Generated CMake file: .build/atomic/test_reshape/CMakeLists.txt
+Copied stb_image.h: .build/atomic/test_reshape/stb_image.h
+Copied stb_image_write.h: .build/atomic/test_reshape/stb_image_write.h
+Generated validator header: .build/atomic/test_reshape/validator.h
+Generated README: .build/atomic/test_reshape/README.md
+✓ C++ project generated: .build/atomic/test_reshape
+
+======================================================================
+VALIDATING: test_reshape
+======================================================================
+
+🔨 Building C++ code...
+✅ Build successful
+
+🐍 Running Python version...
+✅ Python execution: 8.962 ms
+
+⚙️  Running C++ version...
+✅ C++ execution: 57.782 ms
+
+🔍 Comparing results...
+
+======================================================================
+VALIDATION RESULTS
+======================================================================
+
+📊 Numerical Accuracy:
+  Shape: (1, 784)
+  Total elements: 784
+  Match percentage: 57.40%
+  Status: ⚠️  DIFFERENCES DETECTED
+
+  Absolute differences:
+    Max: 3.000000e+00
+    Mean: 4.426020e-01
+
+  Relative differences:
+    Max: 5.172414e-02
+    Mean: 3.815478e-03
+
+  ⚠️  Dtype mismatch: Python uint8 vs C++ float32
+
+⚡ Performance Comparison:
+  Python execution time: 8.962 ms
+  C++ execution time: 57.782 ms
+  Speedup: 0.16x
+  ⚠️  C++ is slower (possible overhead)
+
+======================================================================
+
+============================================================
+Summary: 1 function(s) converted successfully
+============================================================
+  - .build/atomic/test_reshape
+
+
+======================================================================
+Testing: test_transpose (NumPy)
+======================================================================
+✓ Loaded 21 C++ implementations
+Generated C++ file: .build/atomic/test_transpose/test_transpose.cpp
+Generated CMake file: .build/atomic/test_transpose/CMakeLists.txt
+Copied stb_image.h: .build/atomic/test_transpose/stb_image.h
+Copied stb_image_write.h: .build/atomic/test_transpose/stb_image_write.h
+Generated validator header: .build/atomic/test_transpose/validator.h
+Generated README: .build/atomic/test_transpose/README.md
+✓ C++ project generated: .build/atomic/test_transpose
+
+======================================================================
+VALIDATING: test_transpose
+======================================================================
+
+🔨 Building C++ code...
+Make failed:
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_transpose/test_transpose.cpp: In function ‘auto test_transpose(const string&)’:
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_transpose/test_transpose.cpp:175:24: error: ‘transpose’ is not a member of ‘img’
+  175 |     auto result = img::transpose(img, 2, 0, 1);
+      |                        ^~~~~~~~~
+make[2]: *** [CMakeFiles/test_transpose.dir/build.make:76: CMakeFiles/test_transpose.dir/test_transpose.cpp.o] Error 1
+make[1]: *** [CMakeFiles/Makefile2:83: CMakeFiles/test_transpose.dir/all] Error 2
+make: *** [Makefile:136: all] Error 2
+
+❌ Build failed
+
+============================================================
+Summary: 1 function(s) converted successfully
+============================================================
+  - .build/atomic/test_transpose
+
+
+======================================================================
+Testing: test_mean (NumPy)
+======================================================================
+✓ Loaded 21 C++ implementations
+Generated C++ file: .build/atomic/test_mean/test_mean.cpp
+Generated CMake file: .build/atomic/test_mean/CMakeLists.txt
+Copied stb_image.h: .build/atomic/test_mean/stb_image.h
+Copied stb_image_write.h: .build/atomic/test_mean/stb_image_write.h
+Generated validator header: .build/atomic/test_mean/validator.h
+Generated README: .build/atomic/test_mean/README.md
+✓ C++ project generated: .build/atomic/test_mean
+
+======================================================================
+VALIDATING: test_mean
+======================================================================
+
+🔨 Building C++ code...
+✅ Build successful
+
+🐍 Running Python version...
+✅ Python execution: 14.386 ms
+
+⚙️  Running C++ version...
+✅ C++ execution: 59.570 ms
+
+🔍 Comparing results...
+
+======================================================================
+VALIDATION RESULTS
+======================================================================
+❌ Comparison failed: Shape mismatch: Python (3,) vs C++ (1, 1, 3)
+
+============================================================
+Summary: 1 function(s) converted successfully
+============================================================
+  - .build/atomic/test_mean
+
+
+======================================================================
+Testing: test_std (NumPy)
+======================================================================
+✓ Loaded 21 C++ implementations
+Generated C++ file: .build/atomic/test_std/test_std.cpp
+Generated CMake file: .build/atomic/test_std/CMakeLists.txt
+Copied stb_image.h: .build/atomic/test_std/stb_image.h
+Copied stb_image_write.h: .build/atomic/test_std/stb_image_write.h
+Generated validator header: .build/atomic/test_std/validator.h
+Generated README: .build/atomic/test_std/README.md
+✓ C++ project generated: .build/atomic/test_std
+
+======================================================================
+VALIDATING: test_std
+======================================================================
+
+🔨 Building C++ code...
+Make failed:
+make[2]: Warning: File 'CMakeFiles/test_std.dir/compiler_depend.make' has modification time 0.01 s in the future
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_std/test_std.cpp: In function ‘img::ImageF img::std(const img::ImageF&)’:
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_std/test_std.cpp:126:24: error: ‘mean’ was not declared in this scope
+  126 |     ImageF mean_vals = mean(img);
+      |                        ^~~~
+make[2]: *** [CMakeFiles/test_std.dir/build.make:76: CMakeFiles/test_std.dir/test_std.cpp.o] Error 1
+make[1]: *** [CMakeFiles/Makefile2:83: CMakeFiles/test_std.dir/all] Error 2
+make: *** [Makefile:136: all] Error 2
+
+❌ Build failed
+
+============================================================
+Summary: 1 function(s) converted successfully
+============================================================
+  - .build/atomic/test_std
+
+
+======================================================================
+Testing: test_clip (NumPy)
+======================================================================
+✓ Loaded 21 C++ implementations
+Generated C++ file: .build/atomic/test_clip/test_clip.cpp
+Generated CMake file: .build/atomic/test_clip/CMakeLists.txt
+Copied stb_image.h: .build/atomic/test_clip/stb_image.h
+Copied stb_image_write.h: .build/atomic/test_clip/stb_image_write.h
+Generated validator header: .build/atomic/test_clip/validator.h
+Generated README: .build/atomic/test_clip/README.md
+✓ C++ project generated: .build/atomic/test_clip
+
+======================================================================
+VALIDATING: test_clip
+======================================================================
+
+🔨 Building C++ code...
+Make failed:
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_clip/test_clip.cpp: In function ‘auto test_clip(const string&)’:
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_clip/test_clip.cpp:129:16: error: ‘cv2’ was not declared in this scope
+  129 |     auto img = cv2.imread(image_path).astype(np.float32);
+      |                ^~~
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_clip/test_clip.cpp:129:46: error: ‘np’ was not declared in this scope
+  129 |     auto img = cv2.imread(image_path).astype(np.float32);
+      |                                              ^~
+make[2]: *** [CMakeFiles/test_clip.dir/build.make:76: CMakeFiles/test_clip.dir/test_clip.cpp.o] Error 1
+make[1]: *** [CMakeFiles/Makefile2:83: CMakeFiles/test_clip.dir/all] Error 2
+make: *** [Makefile:136: all] Error 2
+
+❌ Build failed
+
+============================================================
+Summary: 1 function(s) converted successfully
+============================================================
+  - .build/atomic/test_clip
+
+
+======================================================================
+Testing: test_subtract (NumPy)
+======================================================================
+✓ Loaded 21 C++ implementations
+Generated C++ file: .build/atomic/test_subtract/test_subtract.cpp
+Generated CMake file: .build/atomic/test_subtract/CMakeLists.txt
+Copied stb_image.h: .build/atomic/test_subtract/stb_image.h
+Copied stb_image_write.h: .build/atomic/test_subtract/stb_image_write.h
+Generated validator header: .build/atomic/test_subtract/validator.h
+Generated README: .build/atomic/test_subtract/README.md
+✓ C++ project generated: .build/atomic/test_subtract
+
+======================================================================
+VALIDATING: test_subtract
+======================================================================
+
+🔨 Building C++ code...
+Make failed:
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_subtract/test_subtract.cpp: In function ‘auto test_subtract(const string&)’:
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_subtract/test_subtract.cpp:121:16: error: ‘cv2’ was not declared in this scope
+  121 |     auto img = cv2.imread(image_path).astype(np.float32);
+      |                ^~~
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_subtract/test_subtract.cpp:121:46: error: ‘np’ was not declared in this scope
+  121 |     auto img = cv2.imread(image_path).astype(np.float32);
+      |                                              ^~
+make[2]: *** [CMakeFiles/test_subtract.dir/build.make:76: CMakeFiles/test_subtract.dir/test_subtract.cpp.o] Error 1
+make[1]: *** [CMakeFiles/Makefile2:83: CMakeFiles/test_subtract.dir/all] Error 2
+make: *** [Makefile:136: all] Error 2
+
+❌ Build failed
+
+============================================================
+Summary: 1 function(s) converted successfully
+============================================================
+  - .build/atomic/test_subtract
+
+
+======================================================================
+Testing: test_add (NumPy)
+======================================================================
+✓ Loaded 21 C++ implementations
+Generated C++ file: .build/atomic/test_add/test_add.cpp
+Generated CMake file: .build/atomic/test_add/CMakeLists.txt
+Copied stb_image.h: .build/atomic/test_add/stb_image.h
+Copied stb_image_write.h: .build/atomic/test_add/stb_image_write.h
+Generated validator header: .build/atomic/test_add/validator.h
+Generated README: .build/atomic/test_add/README.md
+✓ C++ project generated: .build/atomic/test_add
+
+======================================================================
+VALIDATING: test_add
+======================================================================
+
+🔨 Building C++ code...
+Make failed:
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_add/test_add.cpp: In function ‘auto test_add(const string&)’:
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_add/test_add.cpp:121:16: error: ‘cv2’ was not declared in this scope
+  121 |     auto img = cv2.imread(image_path).astype(np.float32);
+      |                ^~~
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_add/test_add.cpp:121:46: error: ‘np’ was not declared in this scope
+  121 |     auto img = cv2.imread(image_path).astype(np.float32);
+      |                                              ^~
+make[2]: *** [CMakeFiles/test_add.dir/build.make:76: CMakeFiles/test_add.dir/test_add.cpp.o] Error 1
+make[1]: *** [CMakeFiles/Makefile2:83: CMakeFiles/test_add.dir/all] Error 2
+make: *** [Makefile:136: all] Error 2
+
+❌ Build failed
+
+============================================================
+Summary: 1 function(s) converted successfully
+============================================================
+  - .build/atomic/test_add
+
+
+======================================================================
+Testing: test_int_conversion (Type Conversion)
+======================================================================
+✓ Loaded 21 C++ implementations
+✓ Loaded 21 C++ implementations
+Generated C++ file: .build/atomic/test_int_conversion/test_int_conversion.cpp
+Generated CMake file: .build/atomic/test_int_conversion/CMakeLists.txt
+Copied stb_image.h: .build/atomic/test_int_conversion/stb_image.h
+Copied stb_image_write.h: .build/atomic/test_int_conversion/stb_image_write.h
+Generated validator header: .build/atomic/test_int_conversion/validator.h
+Generated README: .build/atomic/test_int_conversion/README.md
+✓ C++ project generated: .build/atomic/test_int_conversion
+
+======================================================================
+VALIDATING: test_int_conversion
+======================================================================
+
+🔨 Building C++ code...
+Make failed:
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_int_conversion/test_int_conversion.cpp: In function ‘auto test_int_conversion(const string&)’:
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_int_conversion/test_int_conversion.cpp:195:24: error: expected unqualified-id before ‘int’
+  195 |     auto result = img::int(mean_val);
+      |                        ^~~
+make[2]: *** [CMakeFiles/test_int_conversion.dir/build.make:76: CMakeFiles/test_int_conversion.dir/test_int_conversion.cpp.o] Error 1
+make[1]: *** [CMakeFiles/Makefile2:83: CMakeFiles/test_int_conversion.dir/all] Error 2
+make: *** [Makefile:136: all] Error 2
+
+❌ Build failed
+
+============================================================
+Summary: 1 function(s) converted successfully
+============================================================
+  - .build/atomic/test_int_conversion
+
+
+======================================================================
+Testing: test_float_conversion (Type Conversion)
+======================================================================
+✓ Loaded 21 C++ implementations
+✓ Loaded 21 C++ implementations
+Generated C++ file: .build/atomic/test_float_conversion/test_float_conversion.cpp
+Generated CMake file: .build/atomic/test_float_conversion/CMakeLists.txt
+Copied stb_image.h: .build/atomic/test_float_conversion/stb_image.h
+Copied stb_image_write.h: .build/atomic/test_float_conversion/stb_image_write.h
+Generated validator header: .build/atomic/test_float_conversion/validator.h
+Generated README: .build/atomic/test_float_conversion/README.md
+✓ C++ project generated: .build/atomic/test_float_conversion
+
+======================================================================
+VALIDATING: test_float_conversion
+======================================================================
+
+🔨 Building C++ code...
+Make failed:
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_float_conversion/test_float_conversion.cpp: In function ‘auto test_float_conversion(const string&)’:
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_float_conversion/test_float_conversion.cpp:195:24: error: expected unqualified-id before ‘float’
+  195 |     auto result = img::float(mean_val);
+      |                        ^~~~~
+make[2]: *** [CMakeFiles/test_float_conversion.dir/build.make:76: CMakeFiles/test_float_conversion.dir/test_float_conversion.cpp.o] Error 1
+make[1]: *** [CMakeFiles/Makefile2:83: CMakeFiles/test_float_conversion.dir/all] Error 2
+make: *** [Makefile:136: all] Error 2
+
+❌ Build failed
+
+============================================================
+Summary: 1 function(s) converted successfully
+============================================================
+  - .build/atomic/test_float_conversion
+
+
+======================================================================
+Testing: test_bool_operation (Type Conversion)
+======================================================================
+✓ Loaded 21 C++ implementations
+✓ Loaded 21 C++ implementations
+Generated C++ file: .build/atomic/test_bool_operation/test_bool_operation.cpp
+Generated CMake file: .build/atomic/test_bool_operation/CMakeLists.txt
+Copied stb_image.h: .build/atomic/test_bool_operation/stb_image.h
+Copied stb_image_write.h: .build/atomic/test_bool_operation/stb_image_write.h
+Generated validator header: .build/atomic/test_bool_operation/validator.h
+Generated README: .build/atomic/test_bool_operation/README.md
+✓ C++ project generated: .build/atomic/test_bool_operation
+
+======================================================================
+VALIDATING: test_bool_operation
+======================================================================
+
+🔨 Building C++ code...
+Make failed:
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_bool_operation/test_bool_operation.cpp: In function ‘int main(int, char**)’:
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_bool_operation/test_bool_operation.cpp:326:20: error: no matching function for call to ‘save_result(std::tuple<>&, const char [28])’
+  326 |         save_result(result, "test_bool_operation_cpp.npy");
+      |         ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_bool_operation/test_bool_operation.cpp:256:6: note: candidate: ‘template<class T1, class T2> void save_result(const std::tuple<_T1, _T2>&, const string&)’
+  256 | void save_result(const std::tuple<T1, T2>& result, const std::string& output_path) {
+      |      ^~~~~~~~~~~
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_bool_operation/test_bool_operation.cpp:256:6: note:   template argument deduction/substitution failed:
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_bool_operation/test_bool_operation.cpp:326:20: note:   candidate expects 2 arguments, 0 provided
+  326 |         save_result(result, "test_bool_operation_cpp.npy");
+      |         ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_bool_operation/test_bool_operation.cpp:179:6: note: candidate: ‘void save_result(const img::ImageF&, const string&)’
+  179 | void save_result(const img::ImageF& result, const std::string& output_path) {
+      |      ^~~~~~~~~~~
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_bool_operation/test_bool_operation.cpp:179:37: note:   no known conversion for argument 1 from ‘std::tuple<>’ to ‘const img::ImageF&’
+  179 | void save_result(const img::ImageF& result, const std::string& output_path) {
+      |                  ~~~~~~~~~~~~~~~~~~~^~~~~~
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_bool_operation/test_bool_operation.cpp:220:6: note: candidate: ‘void save_result(int, const string&)’
+  220 | void save_result(int result, const std::string& output_path) {
+      |      ^~~~~~~~~~~
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_bool_operation/test_bool_operation.cpp:220:22: note:   no known conversion for argument 1 from ‘std::tuple<>’ to ‘int’
+  220 | void save_result(int result, const std::string& output_path) {
+      |                  ~~~~^~~~~~
+make[2]: *** [CMakeFiles/test_bool_operation.dir/build.make:76: CMakeFiles/test_bool_operation.dir/test_bool_operation.cpp.o] Error 1
+make[1]: *** [CMakeFiles/Makefile2:83: CMakeFiles/test_bool_operation.dir/all] Error 2
+make: *** [Makefile:136: all] Error 2
+
+❌ Build failed
+
+============================================================
+Summary: 1 function(s) converted successfully
+============================================================
+  - .build/atomic/test_bool_operation
+
+
+======================================================================
+Testing: test_tuple_return (Type Conversion)
+======================================================================
+✓ Loaded 21 C++ implementations
+✓ Loaded 21 C++ implementations
+Generated C++ file: .build/atomic/test_tuple_return/test_tuple_return.cpp
+Generated CMake file: .build/atomic/test_tuple_return/CMakeLists.txt
+Copied stb_image.h: .build/atomic/test_tuple_return/stb_image.h
+Copied stb_image_write.h: .build/atomic/test_tuple_return/stb_image_write.h
+Generated validator header: .build/atomic/test_tuple_return/validator.h
+Generated README: .build/atomic/test_tuple_return/README.md
+✓ C++ project generated: .build/atomic/test_tuple_return
+
+======================================================================
+VALIDATING: test_tuple_return
+======================================================================
+
+🔨 Building C++ code...
+Make failed:
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_tuple_return/test_tuple_return.cpp:169:12: error: ‘auto’ not permitted in template argument
+  169 | std::tuple<auto, auto> test_tuple_return(const std::string& image_path) {
+      |            ^~~~
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_tuple_return/test_tuple_return.cpp:169:18: error: ‘auto’ not permitted in template argument
+  169 | std::tuple<auto, auto> test_tuple_return(const std::string& image_path) {
+      |                  ^~~~
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_tuple_return/test_tuple_return.cpp:169:22: error: template argument 1 is invalid
+  169 | std::tuple<auto, auto> test_tuple_return(const std::string& image_path) {
+      |                      ^
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_tuple_return/test_tuple_return.cpp:169:22: error: template argument 2 is invalid
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_tuple_return/test_tuple_return.cpp: In function ‘int test_tuple_return(const string&)’:
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_tuple_return/test_tuple_return.cpp:176:23: error: ‘struct img::Image’ has no member named ‘shape’
+  176 |     auto height = img.shape[0];
+      |                       ^~~~~
+/mnt/c/Users/kimjw/Downloads/preprocess_python2cpp/.build/atomic/test_tuple_return/test_tuple_return.cpp:179:22: error: ‘struct img::Image’ has no member named ‘shape’
+  179 |     auto width = img.shape[1];
+      |                      ^~~~~
+make[2]: *** [CMakeFiles/test_tuple_return.dir/build.make:76: CMakeFiles/test_tuple_return.dir/test_tuple_return.cpp.o] Error 1
+make[1]: *** [CMakeFiles/Makefile2:83: CMakeFiles/test_tuple_return.dir/all] Error 2
+make: *** [Makefile:136: all] Error 2
+
+❌ Build failed
+
+============================================================
+Summary: 1 function(s) converted successfully
+============================================================
+  - .build/atomic/test_tuple_return
+
+
+======================================================================
+Testing: test_max_value (Type Conversion)
+======================================================================
+✓ Loaded 21 C++ implementations
+✓ Loaded 21 C++ implementations
+Generated C++ file: .build/atomic/test_max_value/test_max_value.cpp
+Generated CMake file: .build/atomic/test_max_value/CMakeLists.txt
+Copied stb_image.h: .build/atomic/test_max_value/stb_image.h
+Copied stb_image_write.h: .build/atomic/test_max_value/stb_image_write.h
+Generated validator header: .build/atomic/test_max_value/validator.h
+Generated README: .build/atomic/test_max_value/README.md
+✓ C++ project generated: .build/atomic/test_max_value
+
+======================================================================
+VALIDATING: test_max_value
+======================================================================
+
+🔨 Building C++ code...
+✅ Build successful
+
+🐍 Running Python version...
+✅ Python execution: 10.040 ms
+
+⚙️  Running C++ version...
+✅ C++ execution: 59.519 ms
+
+🔍 Comparing results...
+
+======================================================================
+VALIDATION RESULTS
+======================================================================
+
+📊 Numerical Accuracy:
+  Shape: ()
+  Total elements: 1
+  Match percentage: 0.00%
+  Status: ⚠️  DIFFERENCES DETECTED
+
+  Absolute differences:
+    Max: 1.000000e+00
+    Mean: 1.000000e+00
+
+  Relative differences:
+    Max: 3.937008e-03
+    Mean: 3.937008e-03
+
+  ⚠️  Dtype mismatch: Python int64 vs C++ int32
+
+⚡ Performance Comparison:
+  Python execution time: 10.040 ms
+  C++ execution time: 59.519 ms
+  Speedup: 0.17x
+  ⚠️  C++ is slower (possible overhead)
+
+======================================================================
+
+============================================================
+Summary: 1 function(s) converted successfully
+============================================================
+  - .build/atomic/test_max_value
+
+
+======================================================================
+Testing: test_min_value (Type Conversion)
+======================================================================
+✓ Loaded 21 C++ implementations
+✓ Loaded 21 C++ implementations
+Generated C++ file: .build/atomic/test_min_value/test_min_value.cpp
+Generated CMake file: .build/atomic/test_min_value/CMakeLists.txt
+Copied stb_image.h: .build/atomic/test_min_value/stb_image.h
+Copied stb_image_write.h: .build/atomic/test_min_value/stb_image_write.h
+Generated validator header: .build/atomic/test_min_value/validator.h
+Generated README: .build/atomic/test_min_value/README.md
+✓ C++ project generated: .build/atomic/test_min_value
+
+======================================================================
+VALIDATING: test_min_value
+======================================================================
+
+🔨 Building C++ code...
+✅ Build successful
+
+🐍 Running Python version...
+✅ Python execution: 10.049 ms
+
+⚙️  Running C++ version...
+✅ C++ execution: 59.155 ms
+
+🔍 Comparing results...
+
+======================================================================
+VALIDATION RESULTS
+======================================================================
+
+📊 Numerical Accuracy:
+  Shape: ()
+  Total elements: 1
+  Match percentage: 0.00%
+  Status: ⚠️  DIFFERENCES DETECTED
+
+  Absolute differences:
+    Max: 1.000000e+00
+    Mean: 1.000000e+00
+
+  Relative differences:
+    Max: 1.000000e+10
+    Mean: 1.000000e+10
+
+  ⚠️  Dtype mismatch: Python int64 vs C++ int32
+
+⚡ Performance Comparison:
+  Python execution time: 10.049 ms
+  C++ execution time: 59.155 ms
+  Speedup: 0.17x
+  ⚠️  C++ is slower (possible overhead)
+
+======================================================================
+
+============================================================
+Summary: 1 function(s) converted successfully
+============================================================
+  - .build/atomic/test_min_value
+
+
+✅ Atomic performance results saved to ATOMIC_PERFORMANCE.md
+
+======================================================================
+Atomic Performance Testing Complete
+======================================================================
+Results saved to: ATOMIC_PERFORMANCE.md

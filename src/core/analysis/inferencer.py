@@ -80,7 +80,7 @@ class TypeInferenceEngine:
             return None
 
     def _infer_constant_type(self, node: ast.Constant) -> TypeHint:
-        """Infer type from constant literal"""
+        """Infer type from constant literal."""
         value = node.value
         if isinstance(value, int):
             return TypeHint("int", is_const=True)
@@ -96,7 +96,7 @@ class TypeInferenceEngine:
     def _infer_call_type(
         self, node: ast.Call, context: dict[str, TypeHint]
     ) -> TypeHint | None:
-        """Infer return type of a function call"""
+        """Infer return type of a function call."""
         func_name = self._get_full_function_name(node.func, context)
 
         # Check library signatures
@@ -120,7 +120,7 @@ class TypeInferenceEngine:
     def _infer_ndarray_method(
         self, method: str, array_type: TypeHint
     ) -> TypeHint | None:
-        """Infer return type of NumPy array methods"""
+        """Infer return type of NumPy array methods."""
         if method == "astype":
             # Returns same array with different dtype
             return TypeHint("numpy.ndarray", shape=array_type.shape)
@@ -136,7 +136,7 @@ class TypeInferenceEngine:
     def _infer_binop_type(
         self, node: ast.BinOp, context: dict[str, TypeHint]
     ) -> TypeHint | None:
-        """Infer type of binary operation"""
+        """Infer type of binary operation."""
         left_type = self.infer_type(node.left, context)
         right_type = self.infer_type(node.right, context)
 
@@ -164,7 +164,7 @@ class TypeInferenceEngine:
     def _infer_subscript_type(
         self, node: ast.Subscript, context: dict[str, TypeHint]
     ) -> TypeHint | None:
-        """Infer type of subscript operation (e.g., array[0])"""
+        """Infer type of subscript operation (e.g., array[0])."""
         value_type = self.infer_type(node.value, context)
 
         if value_type and value_type.base_type == "numpy.ndarray":
@@ -176,7 +176,7 @@ class TypeInferenceEngine:
     def _infer_attribute_type(
         self, node: ast.Attribute, context: dict[str, TypeHint]
     ) -> TypeHint | None:
-        """Infer type of attribute access"""
+        """Infer type of attribute access."""
         obj_type = self.infer_type(node.value, context)
 
         if obj_type and obj_type.base_type == "numpy.ndarray":
@@ -236,8 +236,10 @@ class TypeInferenceEngine:
 
         return context
 
-    def _analyze_statement(self, stmt: ast.stmt, context: dict[str, TypeHint]):
-        """Analyze a statement and update type context"""
+    def _analyze_statement(
+        self, stmt: ast.stmt, context: dict[str, TypeHint]
+    ) -> None:
+        """Analyze a statement and update type context."""
         if isinstance(stmt, ast.Assign):
             # Infer type from value
             value_type = self.infer_type(stmt.value, context)
@@ -255,7 +257,7 @@ class TypeInferenceEngine:
                     context[stmt.target.id] = type_hint
 
     def _parse_type_annotation(self, type_str: str) -> TypeHint:
-        """Parse a type annotation string into TypeHint"""
+        """Parse a type annotation string into TypeHint."""
         # Simplified parsing - could be extended
         if "ndarray" in type_str or "np.ndarray" in type_str:
             return TypeHint("numpy.ndarray")

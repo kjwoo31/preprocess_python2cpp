@@ -4,11 +4,9 @@ import argparse
 import ast
 import sys
 from pathlib import Path
-
-# Add src directory to Python path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
 from typing import Any
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core.analysis.inferencer import TypeInferenceEngine
 from core.analysis.parser import PythonASTParser
@@ -299,7 +297,7 @@ def validate_generated_code(
     _compare_results(comparator, func_name, python_time, cpp_time)
 
 
-def _print_validation_header(func_name: str):
+def _print_validation_header(func_name: str) -> None:
     """Print validation section header."""
     print(f"\n{'=' * 70}")
     print(f"VALIDATING: {func_name}")

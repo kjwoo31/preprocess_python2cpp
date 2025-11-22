@@ -1,10 +1,9 @@
 """IR Builder for converting Python AST to Intermediate Representation."""
 
 import ast
-from typing import Any
 
 from core.analysis.inferencer import TypeInferenceEngine
-from core.analysis.parser import PythonASTParser
+from core.analysis.parser import FunctionInfo, PythonASTParser
 from core.intermediate.schema import (
     IRInput,
     IROperation,
@@ -53,10 +52,7 @@ class IRBuilder:
         parser: PythonASTParser,
     ) -> IRPipeline:
         """Build IR pipeline from AST segment (for pipeline mode)."""
-        # segment is a custom object with body, inputs, outputs
-        type_context = {}  # In pipeline mode, type inference is trickier, simplistic for now?
-        # Actually, the original code passed type_engine but initialized type_context as empty dict inside _build_pipeline_from_segment
-        # Let's follow original logic.
+        type_context: dict[str, TypeHint] = {}
 
         inputs = [IRInput(var, TypeHint("auto")) for var in segment.inputs]
         operations = []
@@ -75,7 +71,9 @@ class IRBuilder:
             metadata={"source": "pipeline_segment"},
         )
 
-    def _find_function_info(self, parser: PythonASTParser, func_name: str):
+    def _find_function_info(
+        self, parser: PythonASTParser, func_name: str
+    ) -> FunctionInfo:
         """Find function information from parser."""
         func_info = next((f for f in parser.functions if f.name == func_name), None)
         if not func_info:
@@ -99,7 +97,7 @@ class IRBuilder:
         return type_engine.analyze_function(func_node)
 
     def _build_pipeline_inputs(
-        self, func_info: Any, type_context: dict
+        self, func_info: FunctionInfo, type_context: dict[str, TypeHint]
     ) -> list[IRInput]:
         """Build IR inputs from function arguments."""
         return [
@@ -108,7 +106,7 @@ class IRBuilder:
         ]
 
     def _build_pipeline_operations(
-        self, func_info: Any, type_context: dict
+        self, func_info: FunctionInfo, type_context: dict[str, TypeHint]
     ) -> list[IROperation]:
         """Build IR operations from function body."""
         operations = []
@@ -118,7 +116,7 @@ class IRBuilder:
         return operations
 
     def _extract_operations_from_statement(
-        self, stmt: Any, type_context: dict, index: int
+        self, stmt: ast.stmt, type_context: dict[str, TypeHint], index: int
     ) -> list[IROperation]:
         """Extract IR operations from statement."""
         operations = []
@@ -145,7 +143,7 @@ class IRBuilder:
         return operations
 
     def _create_assignment_operation(
-        self, value_node: Any, output_var: str, output_type: TypeHint, index: int
+        self, value_node: ast.expr, output_var: str, output_type: TypeHint, index: int
     ) -> IROperation | None:
         """Create operation from assignment value node."""
         if isinstance(value_node, ast.Call):
@@ -245,7 +243,7 @@ class IRBuilder:
         )
 
     def _create_conditional_operation(
-        self, if_stmt: ast.If, type_context: dict, index: int
+        self, if_stmt: ast.If, type_context: dict[str, TypeHint], index: int
     ) -> IROperation:
         """Create conditional (if/else) operation."""
         condition = ast.unparse(if_stmt.test)
@@ -275,7 +273,7 @@ class IRBuilder:
         )
 
     def _create_loop_operation(
-        self, loop_stmt: Any, type_context: dict, index: int
+        self, loop_stmt: ast.For | ast.While, type_context: dict[str, TypeHint], index: int
     ) -> IROperation:
         """Create loop (for/while) operation."""
         if isinstance(loop_stmt, ast.For):
@@ -304,7 +302,7 @@ class IRBuilder:
             loop_body=loop_ops,
         )
 
-    def _convert_constant_to_cpp(self, value: Any) -> str:
+    def _convert_constant_to_cpp(self, value: str | bool | int | float) -> str:
         """Convert Python constant to C++ representation."""
         if isinstance(value, str):
             return f'"{value}"'
@@ -314,7 +312,7 @@ class IRBuilder:
             return str(value)
 
     def _create_binary_operation(
-        self, binop_node: Any, output_var: str, output_type: TypeHint, index: int
+        self, binop_node: ast.BinOp, output_var: str, output_type: TypeHint, index: int
     ) -> IROperation | None:
         """Create binary operation from AST node."""
         left = self._process_operand(binop_node.left)
@@ -330,7 +328,7 @@ class IRBuilder:
             operator=operator,
         )
 
-    def _process_operand(self, node: Any) -> str:
+    def _process_operand(self, node: ast.expr) -> str:
         """Process operand, unwrapping astype() calls."""
         if (
             isinstance(node, ast.Call)
@@ -340,7 +338,7 @@ class IRBuilder:
             return ast.unparse(node.func.value)
         return ast.unparse(node)
 
-    def _get_operator_symbol(self, op_node: Any) -> str:
+    def _get_operator_symbol(self, op_node: ast.operator) -> str:
         """Convert AST operator to symbol."""
         op_map: dict[type, str] = {
             ast.Add: "+",
@@ -352,7 +350,7 @@ class IRBuilder:
         return op_map.get(type(op_node), "?")
 
     def _analyze_function_call_type(
-        self, func: Any
+        self, func: ast.expr
     ) -> tuple[str | None, str | None, str | None, OperationType | None]:
         """Analyze function call type and extract metadata."""
         known_libraries = {"cv2", "np", "numpy", "torch", "tf", "PIL", "Image"}
@@ -377,13 +375,13 @@ class IRBuilder:
         source_object = ast.unparse(func.value)
         return None, func.attr, source_object, OperationType.METHOD_CALL
 
-    def _expand_tuple_args(self, arg_node: Any) -> list[str]:
+    def _expand_tuple_args(self, arg_node: ast.expr) -> list[str]:
         """Expand tuple arguments into individual elements."""
         if isinstance(arg_node, ast.Tuple):
             return [self._convert_constant(elt) for elt in arg_node.elts]
         return [self._convert_constant(arg_node)]
 
-    def _convert_constant(self, node: Any) -> str:
+    def _convert_constant(self, node: ast.expr) -> str:
         """Convert Python constant to C++ value if it's a known constant."""
         if isinstance(node, ast.Attribute):
             mapped_value = self._try_map_attribute_constant(node)
@@ -404,7 +402,7 @@ class IRBuilder:
         return mapping.cpp_value if mapping else None
 
     def _create_function_call_operation(
-        self, call_node: Any, output_var: str, output_type: TypeHint, index: int
+        self, call_node: ast.Call, output_var: str, output_type: TypeHint, index: int
     ) -> IROperation | None:
         """Create function call operation from AST node."""
         unwrapped_call = self._unwrap_type_cast(
@@ -442,7 +440,7 @@ class IRBuilder:
         )
 
     def _handle_method_chaining(
-        self, call_node: Any, output_var: str, output_type: TypeHint, index: int
+        self, call_node: ast.Call, output_var: str, output_type: TypeHint, index: int
     ) -> IROperation | None:
         """Handle chained method calls like a.method1().method2()."""
         if not isinstance(call_node.func, ast.Attribute):
@@ -479,12 +477,12 @@ class IRBuilder:
             args=[chain_expr],
         )
 
-    def _extract_function_kwargs(self, call_node: Any) -> dict:
+    def _extract_function_kwargs(self, call_node: ast.Call) -> dict[str, str]:
         """Extract keyword arguments from function call."""
         return {kw.arg: ast.unparse(kw.value) for kw in call_node.keywords}
 
     def _unwrap_type_cast(
-        self, call_node: Any, output_var: str, output_type: TypeHint, index: int
+        self, call_node: ast.Call, output_var: str, output_type: TypeHint, index: int
     ) -> IROperation | None:
         """Unwrap type cast functions like int() or float()."""
         if (
@@ -499,15 +497,12 @@ class IRBuilder:
         return None
 
     def _extract_function_args(
-        self, call_node: Any, function_name: str | None, source_lib: str | None
-    ) -> list:
+        self, call_node: ast.Call, function_name: str | None, source_lib: str | None
+    ) -> list[str]:
         """Extract and process function arguments."""
         args: list[str] = []
         for arg in call_node.args:
             args.extend(self._expand_tuple_args(arg))
-
-        if function_name == "cvtColor" and source_lib == "cv2":
-            args = args[:1] if args else []
 
         return args
 
@@ -518,8 +513,8 @@ class IRBuilder:
         output_var: str,
         output_type: TypeHint,
         function_name: str | None,
-        args: list,
-        kwargs: dict,
+        args: list[str],
+        kwargs: dict[str, str],
         source_lib: str | None,
         source_object: str | None,
     ) -> IROperation:
@@ -541,7 +536,9 @@ class IRBuilder:
 
         return IROperation(**op_dict)
 
-    def _determine_outputs(self, body: list[Any], type_context: dict) -> list[IROutput]:
+    def _determine_outputs(
+        self, body: list[ast.stmt], type_context: dict[str, TypeHint]
+    ) -> list[IROutput]:
         """Determine output variables from function body."""
         for stmt in reversed(body):
             if isinstance(stmt, ast.Return) and stmt.value:
