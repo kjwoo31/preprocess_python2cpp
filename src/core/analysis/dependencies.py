@@ -1,24 +1,24 @@
 """Recursive dependency resolution for multi-file Python projects."""
 
 import ast
-import sys
-from pathlib import Path
 from dataclasses import dataclass
-from typing import Optional
+from pathlib import Path
 
 
 @dataclass
 class ImportInfo:
     """Information about a Python import statement."""
+
     module_name: str
     imported_names: list[str]
     is_local: bool
-    file_path: Optional[Path]
+    file_path: Path | None
 
 
 @dataclass
 class DependencyNode:
     """Node in dependency graph."""
+
     file_path: Path
     module_name: str
     imports: list[ImportInfo]
@@ -30,16 +30,35 @@ class DependencyResolver:
     """Recursively resolve and parse local imports."""
 
     STDLIB_MODULES = {
-        'sys', 'os', 'pathlib', 'typing', 'dataclasses', 'collections',
-        'itertools', 'functools', 're', 'json', 'math', 'random', 'time'
+        "sys",
+        "os",
+        "pathlib",
+        "typing",
+        "dataclasses",
+        "collections",
+        "itertools",
+        "functools",
+        "re",
+        "json",
+        "math",
+        "random",
+        "time",
     }
 
     THIRD_PARTY_MODULES = {
-        'numpy', 'cv2', 'PIL', 'scipy', 'pandas', 'sklearn',
-        'torch', 'tensorflow', 'jax', 'matplotlib'
+        "numpy",
+        "cv2",
+        "PIL",
+        "scipy",
+        "pandas",
+        "sklearn",
+        "torch",
+        "tensorflow",
+        "jax",
+        "matplotlib",
     }
 
-    def __init__(self, root_dir: Optional[Path] = None):
+    def __init__(self, root_dir: Path | None = None):
         """
         Initialize dependency resolver.
 
@@ -67,7 +86,7 @@ class DependencyResolver:
 
         return self._topological_sort()
 
-    def _resolve_recursive(self, file_path: Path) -> Optional[DependencyNode]:
+    def _resolve_recursive(self, file_path: Path) -> DependencyNode | None:
         """Recursively resolve dependencies for a file."""
         if not file_path.exists():
             return None
@@ -94,7 +113,7 @@ class DependencyResolver:
             module_name=module_name,
             imports=imports,
             ast_tree=tree,
-            source_code=source_code
+            source_code=source_code,
         )
 
         self.resolved[module_name] = node
@@ -105,23 +124,37 @@ class DependencyResolver:
 
         return node
 
-    def _extract_imports(self, tree: ast.Module, current_file: Path) -> list[ImportInfo]:
+    def _extract_imports(
+        self, tree: ast.Module, current_file: Path
+    ) -> list[ImportInfo]:
         """Extract import statements from AST."""
         imports = []
 
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 for alias in node.names:
-                    imports.append(self._process_import(alias.name, [alias.asname or alias.name], current_file))
-            elif isinstance(node, ast.ImportFrom):
-                if node.module:
-                    imported = [alias.name for alias in node.names]
-                    imports.append(self._process_import(node.module, imported, current_file, node.level))
+                    imports.append(
+                        self._process_import(
+                            alias.name, [alias.asname or alias.name], current_file
+                        )
+                    )
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                imported = [alias.name for alias in node.names]
+                imports.append(
+                    self._process_import(
+                        node.module, imported, current_file, node.level
+                    )
+                )
 
         return imports
 
-    def _process_import(self, module_name: str, imported_names: list[str],
-                       current_file: Path, level: int = 0) -> ImportInfo:
+    def _process_import(
+        self,
+        module_name: str,
+        imported_names: list[str],
+        current_file: Path,
+        level: int = 0,
+    ) -> ImportInfo:
         """Process import and determine if it's local."""
         is_local = self._is_local_module(module_name)
         file_path = None
@@ -133,22 +166,20 @@ class DependencyResolver:
             module_name=module_name,
             imported_names=imported_names,
             is_local=is_local,
-            file_path=file_path
+            file_path=file_path,
         )
 
     def _is_local_module(self, module_name: str) -> bool:
         """Determine if module is local (not stdlib/third-party)."""
-        base_module = module_name.split('.')[0]
+        base_module = module_name.split(".")[0]
 
         if base_module in self.STDLIB_MODULES:
             return False
-        if base_module in self.THIRD_PARTY_MODULES:
-            return False
+        return base_module not in self.THIRD_PARTY_MODULES
 
-        return True
-
-    def _resolve_module_path(self, module_name: str, current_file: Path,
-                            level: int) -> Optional[Path]:
+    def _resolve_module_path(
+        self, module_name: str, current_file: Path, level: int
+    ) -> Path | None:
         """Resolve module name to file path."""
         if level > 0:
             base_dir = current_file.parent
@@ -157,13 +188,13 @@ class DependencyResolver:
         else:
             base_dir = self.root_dir
 
-        module_path = base_dir / module_name.replace('.', '/')
+        module_path = base_dir / module_name.replace(".", "/")
 
-        if (module_path.with_suffix('.py')).exists():
-            return module_path.with_suffix('.py')
+        if (module_path.with_suffix(".py")).exists():
+            return module_path.with_suffix(".py")
 
-        if (module_path / '__init__.py').exists():
-            return module_path / '__init__.py'
+        if (module_path / "__init__.py").exists():
+            return module_path / "__init__.py"
 
         return None
 
@@ -172,11 +203,11 @@ class DependencyResolver:
         try:
             rel_path = file_path.relative_to(self.root_dir)
             parts = list(rel_path.parts)
-            if parts[-1] == '__init__.py':
+            if parts[-1] == "__init__.py":
                 parts = parts[:-1]
             else:
-                parts[-1] = parts[-1].replace('.py', '')
-            return '.'.join(parts)
+                parts[-1] = parts[-1].replace(".py", "")
+            return ".".join(parts)
         except ValueError:
             return file_path.stem
 

@@ -1,15 +1,16 @@
 """Execution path tracing to identify actually-called functions."""
 
 import sys
-import trace
-from pathlib import Path
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Any
+from pathlib import Path
+from typing import Any
 
 
 @dataclass
 class ExecutionTrace:
     """Results from execution tracing."""
+
     called_functions: set[tuple[str, str]]
     traced_files: set[str]
 
@@ -28,10 +29,7 @@ class ExecutionTracer:
         self.trace_active = False
 
     def trace_function_execution(
-        self,
-        target_func: Callable,
-        *args,
-        **kwargs
+        self, target_func: Callable, *args, **kwargs
     ) -> tuple[Any, ExecutionTrace]:
         """
         Trace execution of a function call.
@@ -59,15 +57,13 @@ class ExecutionTracer:
 
         trace_result = ExecutionTrace(
             called_functions=self.called_functions.copy(),
-            traced_files=self.traced_files.copy()
+            traced_files=self.traced_files.copy(),
         )
 
         return result, trace_result
 
     def trace_module_execution(
-        self,
-        module_path: Path,
-        args: list[str]
+        self, module_path: Path, args: list[str]
     ) -> ExecutionTrace:
         """
         Trace execution of a Python module with command-line arguments.
@@ -91,8 +87,8 @@ class ExecutionTracer:
             self.trace_active = True
 
             with open(module_path) as f:
-                code = compile(f.read(), str(module_path), 'exec')
-                namespace = {'__name__': '__main__', '__file__': str(module_path)}
+                code = compile(f.read(), str(module_path), "exec")
+                namespace = {"__name__": "__main__", "__file__": str(module_path)}
                 exec(code, namespace)
 
         finally:
@@ -102,12 +98,12 @@ class ExecutionTracer:
 
         return ExecutionTrace(
             called_functions=self.called_functions.copy(),
-            traced_files=self.traced_files.copy()
+            traced_files=self.traced_files.copy(),
         )
 
     def _trace_calls(self, frame, event, arg):
         """Trace callback for sys.settrace."""
-        if event != 'call':
+        if event != "call":
             return self._trace_calls
 
         code = frame.f_code
@@ -122,24 +118,19 @@ class ExecutionTracer:
 
     def _should_trace_file(self, filename: str) -> bool:
         """Determine if file should be traced (exclude stdlib)."""
-        if '<' in filename:
+        if "<" in filename:
             return False
 
         path = Path(filename)
 
-        stdlib_markers = ['site-packages', 'dist-packages', 'lib/python']
+        stdlib_markers = ["site-packages", "dist-packages", "lib/python"]
         if any(marker in str(path) for marker in stdlib_markers):
             return False
 
-        if '/usr/lib/' in str(path) or '\\lib\\' in str(path):
-            return False
-
-        return True
+        return not ("/usr/lib/" in str(path) or "\\lib\\" in str(path))
 
     def filter_by_traced_functions(
-        self,
-        all_functions: list[tuple[str, str]],
-        trace: ExecutionTrace
+        self, all_functions: list[tuple[str, str]], trace: ExecutionTrace
     ) -> list[tuple[str, str]]:
         """
         Filter function list to only include traced functions.

@@ -1,15 +1,19 @@
 """C++ Code Generator for IR-to-C++ project conversion."""
 
-import os
 from pathlib import Path
-from typing import Dict, Any, List, Optional
-from core.intermediate.schema import IRPipeline, IROperation, OperationType
+
+from core.intermediate.schema import IROperation, IRPipeline
 from core.mapping.core import CodeMapper
-from core.mapping.database import MappingDatabase
+
 from .template import TemplateEngine
 
 try:
-    from .llm_provider import LLMCodeGenerator, AnthropicLLMGenerator, VertexAILLMGenerator
+    from .llm_provider import (
+        AnthropicLLMGenerator,
+        LLMCodeGenerator,
+        VertexAILLMGenerator,
+    )
+
     HAS_LLM = True
 except ImportError:
     HAS_LLM = False
@@ -27,22 +31,28 @@ class CodeGenerator:
     5. (Optional) Uses LLM for unmapped operations
     """
 
-    def __init__(self, output_dir: str = "output", use_llm: bool = False,
-                 llm_provider: str = "openai", llm_api_key: Optional[str] = None,
-                 save_learned: bool = True):
+    def __init__(
+        self,
+        output_dir: str = "output",
+        use_llm: bool = False,
+        llm_provider: str = "openai",
+        llm_api_key: str | None = None,
+        save_learned: bool = True,
+    ):
         """Initialize code generator."""
         self.output_dir = Path(output_dir)
         self.mapper = CodeMapper()
         self.template_engine = TemplateEngine()
         self.save_learned = save_learned
         self.use_llm = use_llm
-        self.llm_generator = None
+        self.llm_generator: LLMCodeGenerator | None = None
 
         if use_llm:
             self._initialize_llm_generator(llm_provider, llm_api_key, save_learned)
 
-    def _initialize_llm_generator(self, llm_provider: str, llm_api_key: Optional[str],
-                                  save_learned: bool) -> None:
+    def _initialize_llm_generator(
+        self, llm_provider: str, llm_api_key: str | None, save_learned: bool
+    ) -> None:
         """Initialize LLM generator based on provider."""
         if not HAS_LLM:
             raise ImportError(
@@ -59,12 +69,14 @@ class CodeGenerator:
         elif llm_provider == "vertex":
             self.llm_generator = VertexAILLMGenerator()
         else:
-            raise ValueError(f"Unknown LLM provider: {llm_provider}. Choose: openai, anthropic, or vertex")
+            raise ValueError(
+                f"Unknown LLM provider: {llm_provider}. Choose: openai, anthropic, or vertex"
+            )
 
         if save_learned:
             print("✓ Auto-save learned mappings enabled")
 
-    def generate(self, pipeline: IRPipeline, project_name: Optional[str] = None) -> str:
+    def generate(self, pipeline: IRPipeline, project_name: str | None = None) -> str:
         """
         Generate complete C++ project from IR pipeline.
 
@@ -91,11 +103,11 @@ class CodeGenerator:
 
     def generate_pipeline(
         self,
-        pre_pipeline: Optional[IRPipeline],
-        inf_pipeline: Optional[IRPipeline],
-        post_pipeline: Optional[IRPipeline],
+        pre_pipeline: IRPipeline | None,
+        inf_pipeline: IRPipeline | None,
+        post_pipeline: IRPipeline | None,
         project_name: str = "pipeline",
-        function_name: str = None
+        function_name: str | None = None,
     ) -> str:
         """
         Generate separated Pre/Inf/Post pipeline C++ project.
@@ -130,9 +142,9 @@ class CodeGenerator:
     def _generate_pipeline_components(
         self,
         project_dir: Path,
-        pre: Optional[IRPipeline],
-        inf: Optional[IRPipeline],
-        post: Optional[IRPipeline]
+        pre: IRPipeline | None,
+        inf: IRPipeline | None,
+        post: IRPipeline | None,
     ):
         """Generate C++ files for each pipeline component."""
         if pre:
@@ -147,25 +159,23 @@ class CodeGenerator:
     ):
         """Generate .h and .cpp for a pipeline component."""
         headers = self.mapper.get_required_headers(pipeline)
-        headers = [h for h in headers if 'opencv' not in h.lower()]
+        headers = [h for h in headers if "opencv" not in h.lower()]
         libs = self.mapper.get_required_libraries(pipeline)
 
         context = {
-            'pipeline': pipeline,
-            'headers': headers,
-            'has_eigen': 'Eigen' in libs,
-            'has_opencv': False,
-            'component_name': component_name,
-            'operation_mappings': self._build_operation_mappings(pipeline),
-            'implementations': self.mapper.db.implementations,
+            "pipeline": pipeline,
+            "headers": headers,
+            "has_eigen": "Eigen" in libs,
+            "has_opencv": False,
+            "component_name": component_name,
+            "operation_mappings": self._build_operation_mappings(pipeline),
+            "implementations": self.mapper.db.implementations,
         }
 
         header_code = self.template_engine.render_cpp_code(
-            'cpp/component.h.j2', context
+            "cpp/component.h.j2", context
         )
-        cpp_code = self.template_engine.render_cpp_code(
-            'cpp/component.cpp.j2', context
-        )
+        cpp_code = self.template_engine.render_cpp_code("cpp/component.cpp.j2", context)
 
         (project_dir / f"{component_name}.h").write_text(header_code)
         (project_dir / f"{component_name}.cpp").write_text(cpp_code)
@@ -175,64 +185,67 @@ class CodeGenerator:
     def _generate_pipeline_main(
         self,
         project_dir: Path,
-        pre: Optional[IRPipeline],
-        inf: Optional[IRPipeline],
-        post: Optional[IRPipeline],
-        function_name: str = None
-    ):
+        pre: IRPipeline | None,
+        inf: IRPipeline | None,
+        post: IRPipeline | None,
+        function_name: str | None = None,
+    ) -> None:
         """Generate main.cpp orchestrator."""
         context = {
-            'has_preprocess': pre is not None,
-            'has_inference': inf is not None,
-            'has_postprocess': post is not None,
-            'pre_pipeline': pre,
-            'inf_pipeline': inf,
-            'post_pipeline': post,
-            'function_name': function_name
+            "has_preprocess": pre is not None,
+            "has_inference": inf is not None,
+            "has_postprocess": post is not None,
+            "pre_pipeline": pre,
+            "inf_pipeline": inf,
+            "post_pipeline": post,
+            "function_name": function_name,
         }
 
         main_code = self.template_engine.render_cpp_code(
-            'cpp/pipeline_main.cpp.j2', context
+            "cpp/pipeline_main.cpp.j2", context
         )
 
         (project_dir / "main.cpp").write_text(main_code)
-        print(f"Generated pipeline orchestrator: main.cpp")
+        print("Generated pipeline orchestrator: main.cpp")
 
-    def _generate_inference_stub(self, project_dir: Path, inf_pipeline: Optional[IRPipeline] = None):
+    def _generate_inference_stub(
+        self, project_dir: Path, inf_pipeline: IRPipeline | None = None
+    ):
         """Generate inference stub placeholder."""
         # Detect if inference returns 1D or 2D array
         is_2d = False
         if inf_pipeline and inf_pipeline.metadata:
-            inference_code = inf_pipeline.metadata.get('inference_code', '')
+            inference_code = inf_pipeline.metadata.get("inference_code", "")
             # Check if code contains nested array syntax like [[...]]
-            if '[[' in inference_code:
+            if "[[" in inference_code:
                 is_2d = True
 
-        context = {'is_2d': is_2d}
+        context = {"is_2d": is_2d}
         stub_h_code = self.template_engine.render_cpp_code(
-            'cpp/inference_stub.h.j2', context
+            "cpp/inference_stub.h.j2", context
         )
         stub_cpp_code = self.template_engine.render_cpp_code(
-            'cpp/inference_stub.cpp.j2', {}
+            "cpp/inference_stub.cpp.j2", {}
         )
 
         (project_dir / "inference.h").write_text(stub_h_code)
         (project_dir / "inference.cpp").write_text(stub_cpp_code)
-        print(f"Generated inference stub")
+        print("Generated inference stub")
 
     def _generate_img_common_header(self, project_dir: Path):
         """Generate img_common.h header file (pipeline mode only)."""
         from jinja2 import Environment, FileSystemLoader
-        template_dir = Path(__file__).parent.parent.parent / 'templates'
+
+        template_dir = Path(__file__).parent.parent.parent / "templates"
         env = Environment(loader=FileSystemLoader(str(template_dir)))
-        template = env.get_template('headers/img_common.h.j2')
+        template = env.get_template("headers/img_common.h.j2")
         common_content = template.render()
 
         output_file = project_dir / "img_common.h"
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             f.write(common_content)
 
-        print(f"Generated common header: img_common.h")
+        print("Generated common header: img_common.h")
 
     def _generate_image_loader_cpp(self, project_dir: Path):
         """Generate image_loader.cpp for STB implementation (pipeline mode only)."""
@@ -247,17 +260,14 @@ class CodeGenerator:
 
     def _generate_pipeline_cmake(self, project_dir: Path, project_name: str):
         """Generate CMakeLists.txt for pipeline project."""
-        context = {
-            'project_name': project_name,
-            'is_pipeline': True
-        }
+        context = {"project_name": project_name, "is_pipeline": True}
 
         cmake_content = self.template_engine.render_cmake(
-            'cmake/pipeline_cmakelists.txt.j2', context
+            "cmake/pipeline_cmakelists.txt.j2", context
         )
 
         (project_dir / "CMakeLists.txt").write_text(cmake_content)
-        print(f"Generated pipeline CMakeLists.txt")
+        print("Generated pipeline CMakeLists.txt")
 
     def _build_operation_mappings(self, pipeline: IRPipeline) -> dict:
         """Build operation mappings for template."""
@@ -268,7 +278,7 @@ class CodeGenerator:
                 mappings[op.id] = mapping
         return mappings
 
-    def _process_unmapped_operations(self, pipeline: IRPipeline) -> Dict[str, str]:
+    def _process_unmapped_operations(self, pipeline: IRPipeline) -> dict[str, str]:
         """
         Process unmapped operations using LLM.
 
@@ -285,20 +295,19 @@ class CodeGenerator:
         if not unmapped_ops:
             return {}
 
-        print(f"\n🤖 Using LLM to generate code for {len(unmapped_ops)} unmapped operation(s)...")
+        print(
+            f"\n🤖 Using LLM to generate code for {len(unmapped_ops)} unmapped operation(s)..."
+        )
         return self._generate_code_for_operations(unmapped_ops)
 
-    def _generate_code_for_operations(self, unmapped_ops: list) -> Dict[str, str]:
+    def _generate_code_for_operations(self, unmapped_ops: list) -> dict[str, str]:
         """Generate C++ code for list of unmapped operations."""
         generated_code = {}
 
         for op in unmapped_ops:
             print(f"  Generating: {op.source_lib}.{op.function} ({op.id})")
 
-            context = {
-                'available_vars': {},
-                'operation': op.to_dict()
-            }
+            context = {"available_vars": {}, "operation": op.to_dict()}
 
             code = self._try_generate_operation_code(op, context)
             if code:
@@ -306,18 +315,24 @@ class CodeGenerator:
 
         return generated_code
 
-    def _try_generate_operation_code(self, op, context: dict) -> Optional[str]:
+    def _try_generate_operation_code(self, op, context: dict) -> str | None:
         """Try to generate code for single operation."""
         try:
+            if not self.llm_generator:
+                return None
+
             cpp_code = self.llm_generator.generate_cpp_for_operation(op, context)
 
+            if not cpp_code:
+                return None
+
             if self.llm_generator.validate_generated_code(cpp_code):
-                print(f"    ✓ Generated successfully")
+                print("    ✓ Generated successfully")
                 if self.save_learned:
                     self._save_llm_as_mapping(op, cpp_code)
                 return cpp_code
             else:
-                print(f"    ⚠️ Generated code failed validation")
+                print("    ⚠️ Generated code failed validation")
                 return None
 
         except Exception as e:
@@ -332,11 +347,12 @@ class CodeGenerator:
             operation: The IR operation that was converted
             cpp_code: The C++ code generated by LLM
         """
-        from core.mapping.database import FunctionMapping
 
         try:
-            is_method = operation.op_type.value == 'method_call'
-            cpp_lib, cpp_func = self._extract_cpp_lib_func(cpp_code, operation, is_method)
+            is_method = operation.op_type.value == "method_call"
+            cpp_lib, cpp_func = self._extract_cpp_lib_func(
+                cpp_code, operation, is_method
+            )
             cpp_headers = self._extract_cpp_headers(cpp_code)
 
             if cpp_func:
@@ -348,18 +364,19 @@ class CodeGenerator:
         except Exception as e:
             print(f"    ℹ️  Could not extract mapping (will use inline code): {e}")
 
-    def _extract_cpp_lib_func(self, cpp_code: str, operation: IROperation,
-                              is_method: bool) -> tuple[Optional[str], Optional[str]]:
+    def _extract_cpp_lib_func(
+        self, cpp_code: str, operation: IROperation, is_method: bool
+    ) -> tuple[str | None, str | None]:
         """Extract C++ library and function name from generated code."""
         import re
 
-        namespace_pattern = r'(\w+)::(\w+)'
+        namespace_pattern = r"(\w+)::(\w+)"
         matches = re.findall(namespace_pattern, cpp_code)
 
         if matches:
             return matches[0]
         elif is_method:
-            method_pattern = r'\.(\w+)\('
+            method_pattern = r"\.(\w+)\("
             method_match = re.search(method_pattern, cpp_code)
             if method_match:
                 return operation.source_lib, method_match.group(1)
@@ -374,23 +391,28 @@ class CodeGenerator:
         headers = re.findall(header_pattern, cpp_code)
 
         if headers:
-            return [f'<{h}>' if not h.startswith('<') else h for h in headers]
-        return ['<iostream>']
+            return [f"<{h}>" if not h.startswith("<") else h for h in headers]
+        return ["<iostream>"]
 
-    def _create_function_mapping(self, operation: IROperation, cpp_lib: Optional[str],
-                                 cpp_func: str, cpp_headers: list[str],
-                                 is_method: bool):
+    def _create_function_mapping(
+        self,
+        operation: IROperation,
+        cpp_lib: str | None,
+        cpp_func: str,
+        cpp_headers: list[str],
+        is_method: bool,
+    ):
         """Create FunctionMapping from extracted information."""
         from core.mapping.database import FunctionMapping
 
         return FunctionMapping(
-            python_lib=operation.source_lib or 'unknown',
+            python_lib=operation.source_lib or "unknown",
             python_func=operation.function,
-            cpp_lib=cpp_lib or 'custom',
+            cpp_lib=cpp_lib or "custom",
             cpp_func=cpp_func,
             cpp_headers=cpp_headers,
             is_method=is_method,
-            notes=f'LLM-generated from {operation.id}'
+            notes=f"LLM-generated from {operation.id}",
         )
 
     def _generate_cpp_file(self, pipeline: IRPipeline, project_dir: Path):
@@ -403,8 +425,8 @@ class CodeGenerator:
         headers = self.mapper.get_required_headers(pipeline)
 
         libs = self.mapper.get_required_libraries(pipeline)
-        has_eigen = 'Eigen' in libs
-        has_opencv = 'cv' in libs
+        has_eigen = "Eigen" in libs
+        has_opencv = "cv" in libs
 
         operation_mappings = {}
         for op in pipeline.operations:
@@ -413,43 +435,47 @@ class CodeGenerator:
                 operation_mappings[op.id] = mapping
 
         context = {
-            'pipeline': pipeline,
-            'headers': headers,
-            'has_eigen': has_eigen,
-            'has_opencv': has_opencv,
-            'llm_generated_code': llm_generated_code,
-            'operation_mappings': operation_mappings,
-            'implementations': self.mapper.db.implementations,
+            "pipeline": pipeline,
+            "headers": headers,
+            "has_eigen": has_eigen,
+            "has_opencv": has_opencv,
+            "llm_generated_code": llm_generated_code,
+            "operation_mappings": operation_mappings,
+            "implementations": self.mapper.db.implementations,
         }
 
-        cpp_code = self.template_engine.render_cpp_code('cpp/base.cpp.j2', context)
+        cpp_code = self.template_engine.render_cpp_code("cpp/base.cpp.j2", context)
 
         output_file = project_dir / f"{pipeline.name}.cpp"
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             f.write(cpp_code)
 
         print(f"Generated C++ file: {output_file}")
 
-    def _generate_cmake_file(self, pipeline: IRPipeline, project_dir: Path, project_name: str):
+    def _generate_cmake_file(
+        self, pipeline: IRPipeline, project_dir: Path, project_name: str
+    ):
         """Generate CMakeLists.txt"""
         cmake_packages = self.mapper.suggest_cmake_packages(pipeline)
 
         libs = self.mapper.get_required_libraries(pipeline)
 
         context = {
-            'project_name': project_name,
-            'source_file': f"{pipeline.name}.cpp",
-            'cmake_packages': cmake_packages,
-            'has_eigen': 'Eigen' in libs,
-            'has_opencv': 'cv' in libs,
-            'has_fftw': 'fftw' in libs,
-            'has_sndfile': 'sndfile' in libs,
+            "project_name": project_name,
+            "source_file": f"{pipeline.name}.cpp",
+            "cmake_packages": cmake_packages,
+            "has_eigen": "Eigen" in libs,
+            "has_opencv": "cv" in libs,
+            "has_fftw": "fftw" in libs,
+            "has_sndfile": "sndfile" in libs,
         }
 
-        cmake_content = self.template_engine.render_cmake('cmake/cmakelists.txt.j2', context)
+        cmake_content = self.template_engine.render_cmake(
+            "cmake/cmakelists.txt.j2", context
+        )
 
         output_file = project_dir / "CMakeLists.txt"
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             f.write(cmake_content)
 
         print(f"Generated CMake file: {output_file}")
@@ -459,7 +485,7 @@ class CodeGenerator:
         image_content = self.template_engine.render_image_header()
 
         output_file = project_dir / "image.h"
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             f.write(image_content)
 
         print(f"Generated image header: {output_file}")
@@ -469,9 +495,9 @@ class CodeGenerator:
         import shutil
 
         src_root = Path(__file__).parent.parent.parent
-        stb_src_dir = src_root / 'templates' / 'headers'
+        stb_src_dir = src_root / "templates" / "headers"
 
-        stb_files = ['stb_image.h', 'stb_image_write.h']
+        stb_files = ["stb_image.h", "stb_image_write.h"]
         for stb_file in stb_files:
             src_path = stb_src_dir / stb_file
             dst_path = project_dir / stb_file
@@ -484,26 +510,31 @@ class CodeGenerator:
         validator_content = self.template_engine.render_validator_header()
 
         output_file = project_dir / "validator.h"
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             f.write(validator_content)
 
         print(f"Generated validator header: {output_file}")
 
-    def _generate_readme(self, pipeline: IRPipeline, project_dir: Path, project_name: str):
+    def _generate_readme(
+        self, pipeline: IRPipeline, project_dir: Path, project_name: str
+    ):
         """Generate README.md with build instructions."""
         unmapped = self.mapper.get_unmapped_operations(pipeline)
         packages = self.mapper.suggest_cmake_packages(pipeline)
 
-        sections = self._build_readme_sections(pipeline, project_name, packages, unmapped)
-        readme_content = '\n'.join(sections)
+        sections = self._build_readme_sections(
+            pipeline, project_name, packages, unmapped
+        )
+        readme_content = "\n".join(sections)
 
         output_file = project_dir / "README.md"
         output_file.write_text(readme_content)
 
         print(f"Generated README: {output_file}")
 
-    def _build_readme_sections(self, pipeline: IRPipeline, project_name: str,
-                               packages: list, unmapped: list) -> list[str]:
+    def _build_readme_sections(
+        self, pipeline: IRPipeline, project_name: str, packages: list, unmapped: list
+    ) -> list[str]:
         """Build all README sections."""
         return [
             self._build_readme_header(pipeline, project_name),
@@ -512,7 +543,7 @@ class CodeGenerator:
             self._build_pipeline_info(pipeline),
             self._build_unmapped_section(unmapped),
             self._build_validation_section(),
-            self._build_notes_section()
+            self._build_notes_section(),
         ]
 
     def _build_readme_header(self, pipeline: IRPipeline, project_name: str) -> str:
@@ -531,14 +562,14 @@ Auto-generated C++ implementation of Python preprocessing pipeline: `{pipeline.n
     def _build_requirements_section(self, packages: list[str]) -> str:
         """Build requirements section."""
         package_map = {
-            'OpenCV': '- OpenCV 4.x',
-            'Eigen3': '- Eigen 3.4+',
-            'FFTW3': '- FFTW3',
-            'SndFile': '- libsndfile'
+            "OpenCV": "- OpenCV 4.x",
+            "Eigen3": "- Eigen 3.4+",
+            "FFTW3": "- FFTW3",
+            "SndFile": "- libsndfile",
         }
 
         requirements = [package_map[pkg] for pkg in packages if pkg in package_map]
-        requirements_text = '\n'.join(requirements)
+        requirements_text = "\n".join(requirements)
 
         return f"""## Build Instructions
 
@@ -567,7 +598,7 @@ make
 
     def _build_pipeline_info(self, pipeline: IRPipeline) -> str:
         """Build pipeline information section."""
-        libraries = ", ".join(pipeline.metadata.get('libraries', []))
+        libraries = ", ".join(pipeline.metadata.get("libraries", []))
         num_operations = len(pipeline.operations)
 
         return f"""## Pipeline Information
@@ -582,7 +613,7 @@ make
         if not unmapped:
             return ""
 
-        unmapped_items = '\n'.join(
+        unmapped_items = "\n".join(
             f"- `{op.source_lib}.{op.function}` (Operation ID: {op.id})"
             for op in unmapped
         )

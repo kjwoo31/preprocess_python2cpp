@@ -4,13 +4,14 @@ Benchmark Runner
 Runs Python preprocessing functions and saves ground truth outputs.
 """
 
-import numpy as np
 import argparse
 import importlib.util
-import sys
-from pathlib import Path
-from typing import Any, Callable
 import pickle
+import sys
+from collections.abc import Callable
+from pathlib import Path
+
+import numpy as np
 
 
 class BenchmarkRunner:
@@ -72,15 +73,15 @@ class BenchmarkRunner:
         elif isinstance(result, tuple):
             # Save tuple of arrays
             output_path = self.output_dir / f"{output_name}.pkl"
-            with open(output_path, 'wb') as f:
+            with open(output_path, "wb") as f:
                 pickle.dump(result, f)
             print(f"Saved tuple of {len(result)} items")
         else:
             # Save as pickle
             output_path = self.output_dir / f"{output_name}.pkl"
-            with open(output_path, 'wb') as f:
+            with open(output_path, "wb") as f:
                 pickle.dump(result, f)
-            print(f"Saved result as pickle")
+            print("Saved result as pickle")
 
         print(f"Output saved to: {output_path}")
 
@@ -95,29 +96,37 @@ class BenchmarkRunner:
             input_name: Name for the input file
         """
         output_path = self.output_dir / f"{input_name}_inputs.pkl"
-        with open(output_path, 'wb') as f:
+        with open(output_path, "wb") as f:
             pickle.dump(inputs, f)
         print(f"Inputs saved to: {output_path}")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Run Python benchmark and save outputs")
-    parser.add_argument('--file', required=True, help='Python file containing the function')
-    parser.add_argument('--function', required=True, help='Function name to benchmark')
-    parser.add_argument('--output-name', required=True, help='Name for output file')
-    parser.add_argument('--output-dir', default='benchmark_outputs', help='Output directory')
+    parser = argparse.ArgumentParser(
+        description="Run Python benchmark and save outputs"
+    )
+    parser.add_argument(
+        "--file", required=True, help="Python file containing the function"
+    )
+    parser.add_argument("--function", required=True, help="Function name to benchmark")
+    parser.add_argument("--output-name", required=True, help="Name for output file")
+    parser.add_argument(
+        "--output-dir", default="benchmark_outputs", help="Output directory"
+    )
 
     args = parser.parse_args()
 
     runner = BenchmarkRunner(output_dir=args.output_dir)
 
     # Load function
-    func = runner.load_function_from_file(args.file, args.function)
+    runner.load_function_from_file(args.file, args.function)
 
     # For now, this is a basic template
     # In practice, you'd need to specify inputs based on the function
-    print("Note: You need to modify this script to provide appropriate inputs for your function")
+    print(
+        "Note: You need to modify this script to provide appropriate inputs for your function"
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -1,9 +1,11 @@
-import unittest
 import ast
-from core.analysis.parser import PythonASTParser
+import unittest
+
 from core.analysis.inferencer import TypeInferenceEngine
+from core.analysis.parser import PythonASTParser
 from core.intermediate.builder import IRBuilder
-from core.intermediate.schema import IRPipeline, IROperation
+from core.intermediate.schema import IRPipeline
+
 
 class TestIRBuilder(unittest.TestCase):
     def setUp(self):
@@ -20,7 +22,9 @@ def test_func():
 """
         self.parser.parse(code)
         tree = ast.parse(code)
-        pipeline = self.builder.build_pipeline(self.parser, "test_func", tree, self.type_engine)
+        pipeline = self.builder.build_pipeline(
+            self.parser, "test_func", tree, self.type_engine
+        )
 
         self.assertIsInstance(pipeline, IRPipeline)
         self.assertEqual(pipeline.name, "test_func")
@@ -37,7 +41,9 @@ def test_func():
 """
         self.parser.parse(code)
         tree = ast.parse(code)
-        pipeline = self.builder.build_pipeline(self.parser, "test_func", tree, self.type_engine)
+        pipeline = self.builder.build_pipeline(
+            self.parser, "test_func", tree, self.type_engine
+        )
 
         self.assertEqual(len(pipeline.operations), 1)
         op = pipeline.operations[0]
@@ -45,5 +51,6 @@ def test_func():
         self.assertEqual(op.function, "zeros")
         self.assertEqual(op.source_lib, "np")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
