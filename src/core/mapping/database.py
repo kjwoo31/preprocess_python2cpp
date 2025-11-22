@@ -70,12 +70,13 @@ class MappingDatabase:
         Initialize mapping database.
 
         Args:
-            auto_load_learned: If True, automatically load learned_mappings.json
+            auto_load_learned: If True, automatically load learned.yaml
             config_dir: Path to config directory (default: project_root/config)
         """
         self.mappings: Dict[str, FunctionMapping] = {}
         self.constants: Dict[str, ConstantMapping] = {}
         self.implementations: Dict[str, str] = {}  # impl_name -> code
+        self.auto_load_learned = auto_load_learned
 
         if config_dir is None:
             project_root = Path(__file__).parent.parent.parent.parent
@@ -84,6 +85,9 @@ class MappingDatabase:
         self.config_dir = Path(config_dir)
         self._load_implementations()
         self._load_from_config_files()
+        
+        if self.auto_load_learned:
+            self._load_learned_mappings()
 
     def _load_implementations(self) -> None:
         """Load C++ implementation snippets from config/implementations/."""
@@ -173,6 +177,11 @@ class MappingDatabase:
         except Exception as e:
             print(f"⚠️  Failed to load {config_path.name}: {e}")
 
+    def _load_learned_mappings(self) -> None:
+        """Load learned mappings from learned.yaml if it exists."""
+        learned_file = self.config_dir / 'mappings' / 'learned.yaml'
+        if learned_file.exists():
+            self._load_config_file(learned_file)
 
     def add_mapping(self, mapping: FunctionMapping):
         """
