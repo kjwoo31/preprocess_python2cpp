@@ -4,19 +4,18 @@ import argparse
 import ast
 import sys
 from pathlib import Path
-from typing import Optional
 
 # Add src directory to Python path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from core.analysis.parser import PythonASTParser
 from core.analysis.inferencer import TypeInferenceEngine
+from core.analysis.parser import PythonASTParser
 from core.analysis.separator import PipelineSeparator
-from core.intermediate.schema import IRPipeline
-from core.intermediate.builder import IRBuilder
 from core.generation.generator import CodeGenerator
-from core.validation.executor import PythonRunner, CppRunner
+from core.intermediate.builder import IRBuilder
+from core.intermediate.schema import IRPipeline
 from core.validation.comparator import ResultComparator
+from core.validation.executor import CppRunner, PythonRunner
 
 
 def create_argument_parser() -> argparse.ArgumentParser:
@@ -63,10 +62,9 @@ def parse_python_file(file_path: str, verbose: bool = False) -> PythonASTParser:
 
 
 def _handle_ir_only_mode(ast_parser: PythonASTParser, functions: list[str],
-                        tree) -> int:
+                        tree, ir_builder: IRBuilder) -> int:
     """Handle IR-only mode by generating IR for functions."""
     type_engine = TypeInferenceEngine()
-    ir_builder = IRBuilder()
     for func_name in functions:
         pipeline = ir_builder.build_pipeline(ast_parser, func_name, tree, type_engine)
         print(pipeline.to_json())
@@ -77,6 +75,7 @@ def _process_conversions(functions: list[str], ast_parser: PythonASTParser,
                         tree, generator: CodeGenerator, args) -> list[str]:
     """Process all function conversions and validations."""
     generated_projects = []
+    ir_builder = IRBuilder()
 
     for i, func_name in enumerate(functions, 1):
         if len(functions) > 1:
@@ -85,7 +84,7 @@ def _process_conversions(functions: list[str], ast_parser: PythonASTParser,
             print('='*60)
 
         project_dir = convert_function(func_name, ast_parser, tree,
-                                     generator, args.verbose)
+                                     generator, args.verbose, ir_builder)
         generated_projects.append(project_dir)
 
         should_validate = not args.no_validate
@@ -106,7 +105,8 @@ def _print_summary(generated_projects: list[str]):
 
 
 def convert_function(func_name: str, parser: PythonASTParser, tree,
-                    generator: CodeGenerator, verbose: bool) -> str:
+                    generator: CodeGenerator, verbose: bool,
+                    ir_builder: IRBuilder) -> str:
     """Convert single function to C++."""
     if verbose:
         print(f"\n{'='*60}")
@@ -114,7 +114,6 @@ def convert_function(func_name: str, parser: PythonASTParser, tree,
         print('='*60)
 
     type_engine = TypeInferenceEngine()
-    ir_builder = IRBuilder()
     pipeline = ir_builder.build_pipeline(parser, func_name, tree, type_engine)
 
     project_dir = generator.generate(pipeline)
@@ -129,7 +128,7 @@ def convert_function(func_name: str, parser: PythonASTParser, tree,
 
 
 def process_pipeline_conversion(source_file: str, generator: CodeGenerator,
-                                verbose: bool, test_input: Optional[str] = None,
+                                verbose: bool, test_input: str | None = None,
                                 should_validate: bool = True) -> str:
     """Process pipeline conversion (Pre/Inf/Post split)."""
     source_code, tree = _load_source_code(source_file)
@@ -168,30 +167,29 @@ def _build_pipelines_from_separation(separated, source_code: str) -> tuple:
     type_engine = TypeInferenceEngine()
     ast_parser = PythonASTParser()
     ast_parser.parse(source_code)
+    ir_builder = IRBuilder()
 
-    pre_pipeline = _build_preprocess_pipeline(separated, type_engine, ast_parser)
-    inf_pipeline = _build_inference_pipeline(separated, type_engine, ast_parser)
-    post_pipeline = _build_postprocess_pipeline(separated, type_engine, ast_parser)
+    pre_pipeline = _build_preprocess_pipeline(separated, type_engine, ast_parser, ir_builder)
+    inf_pipeline = _build_inference_pipeline(separated, type_engine, ast_parser, ir_builder)
+    post_pipeline = _build_postprocess_pipeline(separated, type_engine, ast_parser, ir_builder)
 
     return pre_pipeline, inf_pipeline, post_pipeline
 
 
-def _build_preprocess_pipeline(separated, type_engine, ast_parser) -> Optional[IRPipeline]:
+def _build_preprocess_pipeline(separated, type_engine, ast_parser, ir_builder: IRBuilder) -> IRPipeline | None:
     """Build preprocessing pipeline if available."""
     if not separated.preprocess:
         return None
-    ir_builder = IRBuilder()
     return ir_builder.build_pipeline_from_segment(
         separated.preprocess, "preprocess", type_engine, ast_parser
     )
 
 
-def _build_inference_pipeline(separated, type_engine, ast_parser) -> Optional[IRPipeline]:
+def _build_inference_pipeline(separated, type_engine, ast_parser, ir_builder: IRBuilder) -> IRPipeline | None:
     """Build inference pipeline if available."""
     if not separated.inference:
         return None
 
-    ir_builder = IRBuilder()
     inf_pipeline = ir_builder.build_pipeline_from_segment(
         separated.inference, "inference", type_engine, ast_parser
     )
@@ -200,17 +198,16 @@ def _build_inference_pipeline(separated, type_engine, ast_parser) -> Optional[IR
     return inf_pipeline
 
 
-def _build_postprocess_pipeline(separated, type_engine, ast_parser) -> Optional[IRPipeline]:
+def _build_postprocess_pipeline(separated, type_engine, ast_parser, ir_builder: IRBuilder) -> IRPipeline | None:
     """Build postprocessing pipeline if available."""
     if not separated.postprocess:
         return None
-    ir_builder = IRBuilder()
     return ir_builder.build_pipeline_from_segment(
         separated.postprocess, "postprocess", type_engine, ast_parser
     )
 
 
-def _extract_function_name(tree) -> Optional[str]:
+def _extract_function_name(tree) -> str | None:
     """Extract function name from AST."""
     for node in tree.body:
         if isinstance(node, __import__('ast').FunctionDef):
@@ -219,7 +216,7 @@ def _extract_function_name(tree) -> Optional[str]:
 
 
 def validate_generated_code(project_dir: str, func_name: str, source_file: str,
-                           test_input: str, verbose: bool, project_name: Optional[str] = None) -> None:
+                           test_input: str, verbose: bool, project_name: str | None = None) -> None:
     """Build and validate generated C++ code."""
     _print_validation_header(func_name)
 
@@ -261,7 +258,7 @@ def _build_cpp_project(cpp_runner: CppRunner, project_dir: str, verbose: bool) -
 
 
 def _run_python_version(python_runner: PythonRunner, source_file: str,
-                       func_name: str, test_input: str, verbose: bool) -> Optional[float]:
+                       func_name: str, test_input: str, verbose: bool) -> float | None:
     """Run Python version and return execution time."""
     print("\n🐍 Running Python version...")
     try:
@@ -281,7 +278,7 @@ def _run_python_version(python_runner: PythonRunner, source_file: str,
 
 
 def _run_cpp_version(cpp_runner: CppRunner, project_dir: str,
-                    executable_name: str, test_input: str) -> Optional[float]:
+                    executable_name: str, test_input: str) -> float | None:
     """Run C++ version and return execution time."""
     print("\n⚙️  Running C++ version...")
     success, cpp_time = cpp_runner.run_executable(project_dir, executable_name, test_input)
@@ -342,7 +339,8 @@ def main() -> int:
         functions_to_convert = _determine_functions_to_convert(args, ast_parser)
 
         if args.ir_only:
-            return _handle_ir_only_mode(ast_parser, functions_to_convert, tree)
+            ir_builder = IRBuilder()
+            return _handle_ir_only_mode(ast_parser, functions_to_convert, tree, ir_builder)
 
         generator = _create_generator(args)
 
