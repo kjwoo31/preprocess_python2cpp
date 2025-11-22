@@ -169,29 +169,28 @@ def _build_pipelines_from_separation(separated, source_code: str) -> tuple:
     ast_parser = PythonASTParser()
     ast_parser.parse(source_code)
 
-    pre_pipeline = _build_preprocess_pipeline(separated, type_engine, ast_parser)
-    inf_pipeline = _build_inference_pipeline(separated, type_engine, ast_parser)
-    post_pipeline = _build_postprocess_pipeline(separated, type_engine, ast_parser)
+    ir_builder = IRBuilder()
+    pre_pipeline = _build_preprocess_pipeline(separated, type_engine, ast_parser, ir_builder)
+    inf_pipeline = _build_inference_pipeline(separated, type_engine, ast_parser, ir_builder)
+    post_pipeline = _build_postprocess_pipeline(separated, type_engine, ast_parser, ir_builder)
 
     return pre_pipeline, inf_pipeline, post_pipeline
 
 
-def _build_preprocess_pipeline(separated, type_engine, ast_parser) -> Optional[IRPipeline]:
+def _build_preprocess_pipeline(separated, type_engine, ast_parser, ir_builder: IRBuilder) -> Optional[IRPipeline]:
     """Build preprocessing pipeline if available."""
     if not separated.preprocess:
         return None
-    ir_builder = IRBuilder()
     return ir_builder.build_pipeline_from_segment(
         separated.preprocess, "preprocess", type_engine, ast_parser
     )
 
 
-def _build_inference_pipeline(separated, type_engine, ast_parser) -> Optional[IRPipeline]:
+def _build_inference_pipeline(separated, type_engine, ast_parser, ir_builder: IRBuilder) -> Optional[IRPipeline]:
     """Build inference pipeline if available."""
     if not separated.inference:
         return None
 
-    ir_builder = IRBuilder()
     inf_pipeline = ir_builder.build_pipeline_from_segment(
         separated.inference, "inference", type_engine, ast_parser
     )
@@ -200,11 +199,10 @@ def _build_inference_pipeline(separated, type_engine, ast_parser) -> Optional[IR
     return inf_pipeline
 
 
-def _build_postprocess_pipeline(separated, type_engine, ast_parser) -> Optional[IRPipeline]:
+def _build_postprocess_pipeline(separated, type_engine, ast_parser, ir_builder: IRBuilder) -> Optional[IRPipeline]:
     """Build postprocessing pipeline if available."""
     if not separated.postprocess:
         return None
-    ir_builder = IRBuilder()
     return ir_builder.build_pipeline_from_segment(
         separated.postprocess, "postprocess", type_engine, ast_parser
     )
