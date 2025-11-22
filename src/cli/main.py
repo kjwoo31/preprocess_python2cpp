@@ -62,10 +62,9 @@ def parse_python_file(file_path: str, verbose: bool = False) -> PythonASTParser:
 
 
 def _handle_ir_only_mode(ast_parser: PythonASTParser, functions: list[str],
-                        tree) -> int:
+                        tree, ir_builder: IRBuilder) -> int:
     """Handle IR-only mode by generating IR for functions."""
     type_engine = TypeInferenceEngine()
-    ir_builder = IRBuilder()
     for func_name in functions:
         pipeline = ir_builder.build_pipeline(ast_parser, func_name, tree, type_engine)
         print(pipeline.to_json())
@@ -340,7 +339,8 @@ def main() -> int:
         functions_to_convert = _determine_functions_to_convert(args, ast_parser)
 
         if args.ir_only:
-            return _handle_ir_only_mode(ast_parser, functions_to_convert, tree)
+            ir_builder = IRBuilder()
+            return _handle_ir_only_mode(ast_parser, functions_to_convert, tree, ir_builder)
 
         generator = _create_generator(args)
 
