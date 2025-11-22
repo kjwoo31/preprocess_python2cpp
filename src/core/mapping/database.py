@@ -64,7 +64,7 @@ class MappingDatabase:
     This class provides a searchable database of known mappings
     and can be extended with custom rules.
     """
-    
+
     LEARNED_MAPPINGS_FILE = 'learned.yaml'
 
     def __init__(self, auto_load_learned: bool = True, config_dir: Optional[str] = None):
@@ -86,7 +86,7 @@ class MappingDatabase:
         self.config_dir = Path(config_dir)
         self._load_implementations()
         self._load_from_config_files()
-        
+
         if auto_load_learned:
             self._load_learned_mappings()
 
@@ -117,7 +117,7 @@ class MappingDatabase:
 
     def _load_from_config_files(self) -> None:
         """Load mappings from config/mappings/ directory.
-        
+
         Note: Excludes learned.yaml to prevent duplicate loading,
         as learned mappings are added via save_learned_mapping().
         """
