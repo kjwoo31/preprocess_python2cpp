@@ -111,13 +111,17 @@ class MappingDatabase:
             print(f"✓ Loaded {len(self.implementations)} C++ implementations")
 
     def _load_from_config_files(self) -> None:
-        """Load mappings from config/mappings/ directory."""
+        """Load mappings from config/mappings/ directory.
+        
+        Note: Excludes learned.yaml to prevent duplicate loading,
+        as learned mappings are added via save_learned_mapping().
+        """
         mappings_dir = self.config_dir / 'mappings'
         if not mappings_dir.exists():
             print(f"⚠️  Mappings directory not found: {mappings_dir}")
             return
 
-        config_files = list(mappings_dir.glob('*.yaml'))
+        config_files = [f for f in mappings_dir.glob('*.yaml') if f.name != 'learned.yaml']
         if not config_files:
             print(f"⚠️  No mapping files found in {mappings_dir}")
             return
