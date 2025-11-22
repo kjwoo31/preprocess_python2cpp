@@ -64,6 +64,8 @@ class MappingDatabase:
     This class provides a searchable database of known mappings
     and can be extended with custom rules.
     """
+    
+    LEARNED_MAPPINGS_FILE = 'learned.yaml'
 
     def __init__(self, auto_load_learned: bool = True, config_dir: Optional[str] = None):
         """
@@ -76,7 +78,6 @@ class MappingDatabase:
         self.mappings: Dict[str, FunctionMapping] = {}
         self.constants: Dict[str, ConstantMapping] = {}
         self.implementations: Dict[str, str] = {}  # impl_name -> code
-        self.auto_load_learned = auto_load_learned
 
         if config_dir is None:
             project_root = Path(__file__).parent.parent.parent.parent
@@ -86,7 +87,7 @@ class MappingDatabase:
         self._load_implementations()
         self._load_from_config_files()
         
-        if self.auto_load_learned:
+        if auto_load_learned:
             self._load_learned_mappings()
 
     def _load_implementations(self) -> None:
@@ -125,7 +126,7 @@ class MappingDatabase:
             print(f"⚠️  Mappings directory not found: {mappings_dir}")
             return
 
-        config_files = [f for f in mappings_dir.glob('*.yaml') if f.name != 'learned.yaml']
+        config_files = [f for f in mappings_dir.glob('*.yaml') if f.name != self.LEARNED_MAPPINGS_FILE]
         if not config_files:
             print(f"⚠️  No mapping files found in {mappings_dir}")
             return
@@ -179,7 +180,7 @@ class MappingDatabase:
 
     def _load_learned_mappings(self) -> None:
         """Load learned mappings from learned.yaml if it exists."""
-        learned_file = self.config_dir / 'mappings' / 'learned.yaml'
+        learned_file = self.config_dir / 'mappings' / self.LEARNED_MAPPINGS_FILE
         if learned_file.exists():
             self._load_config_file(learned_file)
 
@@ -295,7 +296,7 @@ class MappingDatabase:
         from pathlib import Path
 
         if learned_file is None:
-            learned_file = self.config_dir / 'mappings' / 'learned.yaml'
+            learned_file = self.config_dir / 'mappings' / self.LEARNED_MAPPINGS_FILE
         else:
             learned_file = Path(learned_file)
 
