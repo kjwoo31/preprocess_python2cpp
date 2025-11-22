@@ -64,10 +64,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Test C++ code generation
+      - name: Create test image
         run: |
-          python3 src/cli/main.py -i examples/vision/simple_load.py -f load_image
-          cd .build/output/load_image
-          mkdir build && cd build
-          cmake ..
-          make
+           python3 -c "import cv2, numpy as np; cv2.imwrite('test.jpg', np.random.randint(0,255,(100,100,3),dtype=np.uint8))"
+
+      - name: Test Quick Start (Image Preprocessing)
+        run: |
+          python3 src/cli/main.py -i examples/vision/image_preprocessing.py --test-input test.jpg
+
+      - name: Test Pipeline Mode (MNIST)
+        run: |
+          python3 src/cli/main.py -i examples/vision/mnist_inference.py --pipeline --test-input test.jpg
