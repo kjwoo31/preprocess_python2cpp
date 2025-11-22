@@ -65,12 +65,14 @@ class MappingDatabase:
     and can be extended with custom rules.
     """
 
+    LEARNED_MAPPINGS_FILE = 'learned.yaml'
+
     def __init__(self, auto_load_learned: bool = True, config_dir: Optional[str] = None):
         """
         Initialize mapping database.
 
         Args:
-            auto_load_learned: If True, automatically load learned_mappings.json
+            auto_load_learned: If True, automatically load learned.yaml
             config_dir: Path to config directory (default: project_root/config)
         """
         self.mappings: Dict[str, FunctionMapping] = {}
@@ -84,6 +86,9 @@ class MappingDatabase:
         self.config_dir = Path(config_dir)
         self._load_implementations()
         self._load_from_config_files()
+
+        if auto_load_learned:
+            self._load_learned_mappings()
 
     def _load_implementations(self) -> None:
         """Load C++ implementation snippets from config/implementations/."""
@@ -111,13 +116,17 @@ class MappingDatabase:
             print(f"✓ Loaded {len(self.implementations)} C++ implementations")
 
     def _load_from_config_files(self) -> None:
-        """Load mappings from config/mappings/ directory."""
+        """Load mappings from config/mappings/ directory.
+
+        Note: Excludes learned.yaml to prevent duplicate loading,
+        as learned mappings are added via save_learned_mapping().
+        """
         mappings_dir = self.config_dir / 'mappings'
         if not mappings_dir.exists():
             print(f"⚠️  Mappings directory not found: {mappings_dir}")
             return
 
-        config_files = list(mappings_dir.glob('*.yaml'))
+        config_files = [f for f in mappings_dir.glob('*.yaml') if f.name != self.LEARNED_MAPPINGS_FILE]
         if not config_files:
             print(f"⚠️  No mapping files found in {mappings_dir}")
             return
@@ -169,6 +178,11 @@ class MappingDatabase:
         except Exception as e:
             print(f"⚠️  Failed to load {config_path.name}: {e}")
 
+    def _load_learned_mappings(self) -> None:
+        """Load learned mappings from learned.yaml if it exists."""
+        learned_file = self.config_dir / 'mappings' / self.LEARNED_MAPPINGS_FILE
+        if learned_file.exists():
+            self._load_config_file(learned_file)
 
     def add_mapping(self, mapping: FunctionMapping):
         """
@@ -282,7 +296,7 @@ class MappingDatabase:
         from pathlib import Path
 
         if learned_file is None:
-            learned_file = self.config_dir / 'mappings' / 'learned.yaml'
+            learned_file = self.config_dir / 'mappings' / self.LEARNED_MAPPINGS_FILE
         else:
             learned_file = Path(learned_file)
 
