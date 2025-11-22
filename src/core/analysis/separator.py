@@ -2,12 +2,12 @@
 
 import ast
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass
 class PipelineSegment:
     """Represents a segment of the pipeline (Pre/Inf/Post)."""
+
     body: list[ast.stmt]
     inputs: set[str]
     outputs: set[str]
@@ -18,9 +18,10 @@ class PipelineSegment:
 @dataclass
 class SeparatedPipeline:
     """Container for separated pipeline segments."""
-    preprocess: Optional[PipelineSegment]
-    inference: Optional[PipelineSegment]
-    postprocess: Optional[PipelineSegment]
+
+    preprocess: PipelineSegment | None
+    inference: PipelineSegment | None
+    postprocess: PipelineSegment | None
     has_inference_marker: bool
 
 
@@ -50,31 +51,30 @@ class PipelineSeparator:
 
         # Check if marker is inside a function
         for node in tree.body:
-            if isinstance(node, ast.FunctionDef):
-                if node.lineno <= marker_line <= (node.end_lineno or 999999):
-                    print(f"✓ Found '{self.inference_marker}' inside function: {node.name}")
-                    return self._split_function_body(node, source_code, marker_line)
+            if isinstance(node, ast.FunctionDef) and (
+                node.lineno <= marker_line <= (node.end_lineno or 999999)
+            ):
+                print(f"✓ Found '{self.inference_marker}' inside function: {node.name}")
+                return self._split_function_body(node, source_code, marker_line)
 
         # Module-level separation (original behavior)
         return self._split_by_marker(tree, marker_line)
 
-    def _find_inference_marker(self, source_code: str) -> Optional[int]:
+    def _find_inference_marker(self, source_code: str) -> int | None:
         """Find line number of @inference marker."""
-        for i, line in enumerate(source_code.split('\n'), 1):
+        for i, line in enumerate(source_code.split("\n"), 1):
             if self.inference_marker in line:
                 return i
         return None
 
-    def _create_single_segment_pipeline(
-        self, tree: ast.Module
-    ) -> SeparatedPipeline:
+    def _create_single_segment_pipeline(self, tree: ast.Module) -> SeparatedPipeline:
         """Create pipeline with single preprocessing segment."""
         segment = PipelineSegment(
             body=tree.body,
             inputs=set(),
             outputs=set(),
             line_start=1,
-            line_end=len(tree.body)
+            line_end=len(tree.body),
         )
         self._track_variables(segment)
 
@@ -82,14 +82,14 @@ class PipelineSeparator:
             preprocess=segment,
             inference=None,
             postprocess=None,
-            has_inference_marker=False
+            has_inference_marker=False,
         )
 
-    def _split_by_marker(
-        self, tree: ast.Module, marker_line: int
-    ) -> SeparatedPipeline:
+    def _split_by_marker(self, tree: ast.Module, marker_line: int) -> SeparatedPipeline:
         """Split AST body into Pre/Inf/Post based on marker line."""
-        pre_body, inf_body, post_body = self._categorize_statements(tree.body, marker_line)
+        pre_body, inf_body, post_body = self._categorize_statements(
+            tree.body, marker_line
+        )
         pre_seg, inf_seg, post_seg = self._create_segments_from_bodies(
             pre_body, inf_body, post_body, marker_line
         )
@@ -98,17 +98,19 @@ class PipelineSeparator:
             preprocess=pre_seg if pre_body else None,
             inference=inf_seg if inf_body else None,
             postprocess=post_seg if post_body else None,
-            has_inference_marker=True
+            has_inference_marker=True,
         )
 
-    def _categorize_statements(self, statements: list, marker_line: int) -> tuple[list, list, list]:
+    def _categorize_statements(
+        self, statements: list, marker_line: int
+    ) -> tuple[list, list, list]:
         """Categorize statements into pre/inf/post sections."""
         sections = {"pre": [], "inf": [], "post": []}
         current_section = "pre"
         inf_func_found = False
 
         for stmt in statements:
-            stmt_line = getattr(stmt, 'lineno', 0)
+            stmt_line = getattr(stmt, "lineno", 0)
 
             if current_section == "pre" and stmt_line >= marker_line:
                 current_section = "inf"
@@ -123,27 +125,33 @@ class PipelineSeparator:
 
         return sections["pre"], sections["inf"], sections["post"]
 
-    def _create_segments_from_bodies(self, pre_body: list, inf_body: list,
-                                     post_body: list, marker_line: int) -> tuple:
+    def _create_segments_from_bodies(
+        self, pre_body: list, inf_body: list, post_body: list, marker_line: int
+    ) -> tuple:
         """Create pipeline segments from statement bodies."""
         pre_seg = self._create_segment(pre_body, 1, marker_line - 1)
-        inf_seg = self._create_segment(inf_body, marker_line, marker_line + len(inf_body))
-        post_seg = self._create_segment(post_body, marker_line + len(inf_body) + 1,
-                                        marker_line + len(inf_body) + len(post_body))
+        inf_seg = self._create_segment(
+            inf_body, marker_line, marker_line + len(inf_body)
+        )
+        post_seg = self._create_segment(
+            post_body,
+            marker_line + len(inf_body) + 1,
+            marker_line + len(inf_body) + len(post_body),
+        )
         return pre_seg, inf_seg, post_seg
 
     def _find_postprocessing_marker(
         self, source_code: str, marker_line: int
-    ) -> Optional[int]:
+    ) -> int | None:
         """Find postprocessing marker line after inference marker."""
-        lines = source_code.split('\n')
+        lines = source_code.split("\n")
         for i, line in enumerate(lines, 1):
-            if i > marker_line and '# Postprocessing' in line:
+            if i > marker_line and "# Postprocessing" in line:
                 return i
         return None
 
     def _classify_statements(
-        self, func_node: ast.FunctionDef, marker_line: int, post_marker_line: Optional[int]
+        self, func_node: ast.FunctionDef, marker_line: int, post_marker_line: int | None
     ) -> tuple[list[ast.stmt], list[ast.stmt], list[ast.stmt]]:
         """Classify function statements into pre/inf/post sections."""
         sections = {"pre": [], "inf": [], "post": []}
@@ -153,16 +161,26 @@ class PipelineSeparator:
             if self._is_comment_stmt(stmt):
                 continue
 
-            stmt_line = getattr(stmt, 'lineno', 0)
+            stmt_line = getattr(stmt, "lineno", 0)
             current_section = self._determine_section(
-                current_section, stmt_line, marker_line, post_marker_line, len(sections["inf"])
+                current_section,
+                stmt_line,
+                marker_line,
+                post_marker_line,
+                len(sections["inf"]),
             )
             sections[current_section].append(stmt)
 
         return sections["pre"], sections["inf"], sections["post"]
 
-    def _determine_section(self, current: str, stmt_line: int, marker_line: int,
-                          post_marker_line: Optional[int], inf_count: int) -> str:
+    def _determine_section(
+        self,
+        current: str,
+        stmt_line: int,
+        marker_line: int,
+        post_marker_line: int | None,
+        inf_count: int,
+    ) -> str:
         """Determine which section a statement belongs to."""
         if current == "pre" and stmt_line >= marker_line:
             return "inf"
@@ -176,31 +194,53 @@ class PipelineSeparator:
         return current
 
     def _create_pipeline_segments(
-        self, func_node: ast.FunctionDef, pre_stmts: list[ast.stmt],
-        inf_stmts: list[ast.stmt], post_stmts: list[ast.stmt], marker_line: int
-    ) -> tuple[Optional[PipelineSegment], Optional[PipelineSegment], Optional[PipelineSegment]]:
+        self,
+        func_node: ast.FunctionDef,
+        pre_stmts: list[ast.stmt],
+        inf_stmts: list[ast.stmt],
+        post_stmts: list[ast.stmt],
+        marker_line: int,
+    ) -> tuple[PipelineSegment | None, PipelineSegment | None, PipelineSegment | None]:
         """Create pipeline segments with proper input/output tracking."""
         func_params = [arg.arg for arg in func_node.args.args]
 
         # For preprocessing: use last defined variable as output
         pre_outputs = self._get_last_defined_var(pre_stmts, set(func_params))
-        pre_seg = self._create_function_segment_with_outputs(
-            pre_stmts, func_params, pre_outputs, 1, marker_line - 1
-        ) if pre_stmts else None
+        pre_seg = (
+            self._create_function_segment_with_outputs(
+                pre_stmts, func_params, pre_outputs, 1, marker_line - 1
+            )
+            if pre_stmts
+            else None
+        )
 
         inf_inputs = list(pre_seg.outputs) if pre_seg else func_params
         inf_outputs = self._find_used_variables(post_stmts, set())
-        inf_seg = self._create_function_segment_with_outputs(
-            inf_stmts, inf_inputs, inf_outputs, marker_line, marker_line + len(inf_stmts)
-        ) if inf_stmts else None
+        inf_seg = (
+            self._create_function_segment_with_outputs(
+                inf_stmts,
+                inf_inputs,
+                inf_outputs,
+                marker_line,
+                marker_line + len(inf_stmts),
+            )
+            if inf_stmts
+            else None
+        )
 
         post_inputs = list(inf_seg.outputs) if inf_seg else inf_inputs
         post_outputs = self._find_return_variables(func_node)
-        post_seg = self._create_function_segment_with_outputs(
-            post_stmts, post_inputs, post_outputs,
-            marker_line + len(inf_stmts) + 1,
-            marker_line + len(inf_stmts) + len(post_stmts)
-        ) if post_stmts else None
+        post_seg = (
+            self._create_function_segment_with_outputs(
+                post_stmts,
+                post_inputs,
+                post_outputs,
+                marker_line + len(inf_stmts) + 1,
+                marker_line + len(inf_stmts) + len(post_stmts),
+            )
+            if post_stmts
+            else None
+        )
 
         return pre_seg, inf_seg, post_seg
 
@@ -222,7 +262,7 @@ class PipelineSeparator:
             preprocess=pre_seg,
             inference=inf_seg,
             postprocess=post_seg,
-            has_inference_marker=True
+            has_inference_marker=True,
         )
 
     def _is_comment_stmt(self, stmt: ast.stmt) -> bool:
@@ -233,22 +273,20 @@ class PipelineSeparator:
 
     def _create_function_segment(
         self, body: list[ast.stmt], inputs: list[str], start: int, end: int
-    ) -> Optional[PipelineSegment]:
+    ) -> PipelineSegment | None:
         """Create segment from function body statements."""
         if not body:
             return None
 
         segment = PipelineSegment(
-            body=body,
-            inputs=set(inputs),
-            outputs=set(),
-            line_start=start,
-            line_end=end
+            body=body, inputs=set(inputs), outputs=set(), line_start=start, line_end=end
         )
         self._track_variables_from_inputs(segment, inputs)
         return segment
 
-    def _get_last_defined_var(self, stmts: list[ast.stmt], exclude: set[str]) -> set[str]:
+    def _get_last_defined_var(
+        self, stmts: list[ast.stmt], exclude: set[str]
+    ) -> set[str]:
         """Get the last defined variable in statements."""
         defined = set()
         for stmt in stmts:
@@ -263,7 +301,9 @@ class PipelineSeparator:
                             return {target.id}
         return set()
 
-    def _find_used_variables(self, stmts: list[ast.stmt], exclude: set[str]) -> set[str]:
+    def _find_used_variables(
+        self, stmts: list[ast.stmt], exclude: set[str]
+    ) -> set[str]:
         """Find variables used in statements (but not defined in them)."""
         used = set()
         defined = set(exclude)
@@ -289,9 +329,13 @@ class PipelineSeparator:
         return set()
 
     def _create_function_segment_with_outputs(
-        self, body: list[ast.stmt], inputs: list[str], outputs: set[str],
-        start: int, end: int
-    ) -> Optional[PipelineSegment]:
+        self,
+        body: list[ast.stmt],
+        inputs: list[str],
+        outputs: set[str],
+        start: int,
+        end: int,
+    ) -> PipelineSegment | None:
         """Create segment with explicit inputs/outputs."""
         if not body:
             return None
@@ -304,18 +348,21 @@ class PipelineSeparator:
             inputs=set(inputs),
             outputs=final_outputs,
             line_start=start,
-            line_end=end
+            line_end=end,
         )
 
-    def _collect_all_defined_vars(self, body: list[ast.stmt], inputs: list[str]) -> set[str]:
+    def _collect_all_defined_vars(
+        self, body: list[ast.stmt], inputs: list[str]
+    ) -> set[str]:
         """Collect all variables defined in body."""
         defined_vars = set(inputs)
         for stmt in body:
             self._collect_defined_vars(stmt, defined_vars)
         return defined_vars
 
-    def _determine_final_outputs(self, outputs: set[str], defined_vars: set[str],
-                                 inputs: list[str]) -> set[str]:
+    def _determine_final_outputs(
+        self, outputs: set[str], defined_vars: set[str], inputs: list[str]
+    ) -> set[str]:
         """Determine final output variables."""
         final_outputs = outputs & defined_vars
         if not final_outputs:
@@ -334,23 +381,22 @@ class PipelineSeparator:
 
         segment.outputs = defined_vars - set(inputs)
         for stmt in segment.body:
-            if isinstance(stmt, ast.Return) and stmt.value:
-                if isinstance(stmt.value, ast.Name):
-                    segment.outputs = {stmt.value.id}
+            if (
+                isinstance(stmt, ast.Return)
+                and stmt.value
+                and isinstance(stmt.value, ast.Name)
+            ):
+                segment.outputs = {stmt.value.id}
 
     def _create_segment(
         self, body: list[ast.stmt], start: int, end: int
-    ) -> Optional[PipelineSegment]:
+    ) -> PipelineSegment | None:
         """Create segment with variable tracking."""
         if not body:
             return None
 
         segment = PipelineSegment(
-            body=body,
-            inputs=set(),
-            outputs=set(),
-            line_start=start,
-            line_end=end
+            body=body, inputs=set(), outputs=set(), line_start=start, line_end=end
         )
         self._track_variables(segment)
         return segment
@@ -370,9 +416,12 @@ class PipelineSeparator:
     def _collect_used_vars(self, node: ast.AST, used: set[str], defined: set[str]):
         """Collect variables used in node (before definition)."""
         for child in ast.walk(node):
-            if isinstance(child, ast.Name) and isinstance(child.ctx, ast.Load):
-                if child.id not in defined:
-                    used.add(child.id)
+            if (
+                isinstance(child, ast.Name)
+                and isinstance(child.ctx, ast.Load)
+                and child.id not in defined
+            ):
+                used.add(child.id)
 
     def _collect_defined_vars(self, node: ast.AST, defined: set[str]):
         """Collect variables defined in node."""

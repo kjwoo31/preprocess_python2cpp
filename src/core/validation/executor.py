@@ -1,13 +1,15 @@
 """Code Runners for Python and C++ execution and benchmarking."""
 
-import subprocess
-import time
-import sys
-import os
-from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
-import numpy as np
+import contextlib
 import importlib.util
+import os
+import subprocess
+import sys
+import time
+from pathlib import Path
+from typing import Any
+
+import numpy as np
 
 
 class PythonRunner:
@@ -25,8 +27,9 @@ class PythonRunner:
         self.results_dir = Path(results_dir)
         self.results_dir.mkdir(parents=True, exist_ok=True)
 
-    def run_function(self, source_file: str, function_name: str,
-                     input_data: Any) -> Tuple[Any, float]:
+    def run_function(
+        self, source_file: str, function_name: str, input_data: Any
+    ) -> tuple[Any, float]:
         """
         Run a Python function and measure execution time.
 
@@ -46,40 +49,44 @@ class PythonRunner:
 
         return result, execution_time
 
-    def _load_and_prepare_function(self, source_file: str, function_name: str):
+    def _load_and_prepare_function(self, source_file: str, function_name: str) -> Any:
         """Load module and extract function."""
         module = self._load_module_from_file(source_file)
         return self._get_function_from_module(module, function_name, source_file)
 
-    def _load_module_from_file(self, source_file: str):
+    def _load_module_from_file(self, source_file: str) -> Any:
         """Load Python module from file path."""
         spec = importlib.util.spec_from_file_location("module", source_file)
+        if spec is None or spec.loader is None:
+            raise ImportError(f"Could not load module from {source_file}")
         module = importlib.util.module_from_spec(spec)
         sys.modules["module"] = module
         spec.loader.exec_module(module)
         return module
 
-    def _get_function_from_module(self, module, function_name: str, source_file: str):
+    def _get_function_from_module(
+        self, module: Any, function_name: str, source_file: str
+    ) -> Any:
         """Extract function from module."""
         if not hasattr(module, function_name):
             raise ValueError(f"Function '{function_name}' not found in {source_file}")
         return getattr(module, function_name)
 
-    def _warmup_function(self, func, input_data: Any):
+    def _warmup_function(self, func: Any, input_data: Any) -> None:
         """Execute warmup run to avoid cold start effects."""
         try:
             _ = func(input_data)
         except Exception as e:
             print(f"Warning: Warmup failed: {e}")
 
-    def _measure_execution(self, func, input_data: Any) -> Tuple[Any, float]:
+    def _measure_execution(self, func, input_data: Any) -> tuple[Any, float]:
         """Measure function execution time."""
         start_time = time.perf_counter()
         result = func(input_data)
         end_time = time.perf_counter()
         return result, end_time - start_time
 
-    def _save_result(self, result: Any, function_name: str, suffix: str):
+    def _save_result(self, result: Any, function_name: str, suffix: str) -> None:
         """Save result to file."""
         output_path = self.results_dir / f"{function_name}_{suffix}.npy"
 
@@ -90,26 +97,26 @@ class PythonRunner:
         else:
             self._try_save_as_numpy(result, output_path)
 
-    def _save_tuple_results(self, result: tuple, function_name: str, suffix: str):
+    def _save_tuple_results(
+        self, result: tuple, function_name: str, suffix: str
+    ) -> None:
         """Save tuple of scalars as structured array."""
         output_path = self.results_dir / f"{function_name}_{suffix}.npy"
 
         if len(result) == 2:
             dtype1 = np.dtype(type(result[0])).type
             dtype2 = np.dtype(type(result[1])).type
-            dt = np.dtype([('f0', dtype1), ('f1', dtype2)])
+            dt = np.dtype([("f0", dtype1), ("f1", dtype2)])
             structured = np.array((result[0], result[1]), dtype=dt)
             np.save(output_path, structured)
         else:
             # Fallback for other tuple sizes
             np.save(output_path, np.array(result))
 
-    def _try_save_as_numpy(self, result: Any, output_path: Path):
+    def _try_save_as_numpy(self, result: Any, output_path: Path) -> None:
         """Attempt to convert and save result as numpy array."""
-        try:
+        with contextlib.suppress(Exception):
             np.save(output_path, np.array(result))
-        except Exception:
-            pass
 
 
 class CppRunner:
@@ -164,15 +171,11 @@ class CppRunner:
     def _run_cmake(self, build_dir: Path) -> bool:
         """Execute CMake configuration."""
         cmake_result = subprocess.run(
-            ["cmake", ".."],
-            cwd=build_dir,
-            capture_output=True,
-            text=True,
-            timeout=60
+            ["cmake", ".."], cwd=build_dir, capture_output=True, text=True, timeout=60
         )
 
         if cmake_result.returncode != 0:
-            print(f"CMake failed:")
+            print("CMake failed:")
             print(cmake_result.stderr)
             return False
 
@@ -181,22 +184,19 @@ class CppRunner:
     def _run_make(self, build_dir: Path) -> bool:
         """Execute make compilation."""
         make_result = subprocess.run(
-            ["make", "-j4"],
-            cwd=build_dir,
-            capture_output=True,
-            text=True,
-            timeout=300
+            ["make", "-j4"], cwd=build_dir, capture_output=True, text=True, timeout=300
         )
 
         if make_result.returncode != 0:
-            print(f"Make failed:")
+            print("Make failed:")
             print(make_result.stderr)
             return False
 
         return True
 
-    def run_executable(self, project_dir: str, project_name: str,
-                      input_data: str, iterations: int = 10) -> Tuple[bool, float]:
+    def run_executable(
+        self, project_dir: str, project_name: str, input_data: str, iterations: int = 10
+    ) -> tuple[bool, float]:
         """
         Run C++ executable and measure execution time.
 
@@ -217,10 +217,13 @@ class CppRunner:
             return False, 0.0
 
         input_path = self._resolve_input_path(input_data)
-        return self._execute_and_measure(executable, input_path, project_path, iterations)
+        return self._execute_and_measure(
+            executable, input_path, project_path, iterations
+        )
 
-    def _execute_and_measure(self, executable: Path, input_path: str,
-                            project_path: Path, iterations: int) -> Tuple[bool, float]:
+    def _execute_and_measure(
+        self, executable: Path, input_path: str, project_path: Path, iterations: int
+    ) -> tuple[bool, float]:
         """Execute binary and measure performance."""
         try:
             self._warmup_executable(executable, input_path, project_path)
@@ -245,18 +248,20 @@ class CppRunner:
             return str(Path(input_data).absolute())
         return input_data
 
-    def _warmup_executable(self, executable: Path, input_path: str,
-                          project_path: Path):
+    def _warmup_executable(
+        self, executable: Path, input_path: str, project_path: Path
+    ) -> None:
         """Execute warmup run of C++ executable."""
         subprocess.run(
             [str(executable.absolute()), input_path],
             cwd=project_path / "build",
             capture_output=True,
-            timeout=10
+            timeout=10,
         )
 
-    def _measure_execution_time(self, executable: Path, input_path: str,
-                               project_path: Path, iterations: int) -> float:
+    def _measure_execution_time(
+        self, executable: Path, input_path: str, project_path: Path, iterations: int
+    ) -> float:
         """Measure average execution time over multiple iterations."""
         times = []
 
@@ -267,7 +272,7 @@ class CppRunner:
                 cwd=project_path / "build",
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=10,
             )
             end_time = time.perf_counter()
 
@@ -278,7 +283,7 @@ class CppRunner:
 
         return sum(times) / len(times)
 
-    def _copy_results_to_global_dir(self, project_path: Path):
+    def _copy_results_to_global_dir(self, project_path: Path) -> None:
         """Copy result files from project directory to global results directory."""
         import shutil
 

@@ -1,16 +1,17 @@
 """LLM-based Code Generator for unmapped operations."""
 
-from typing import Dict, Any, Optional
 import json
 import os
+from typing import Any
 
 try:
     import openai
+
     HAS_OPENAI = True
 except ImportError:
     HAS_OPENAI = False
 
-from core.intermediate.schema import IROperation, IRPipeline
+from core.intermediate.schema import IROperation
 
 
 class LLMCodeGenerator:
@@ -21,7 +22,7 @@ class LLMCodeGenerator:
     have a direct Python-to-C++ mapping.
     """
 
-    def __init__(self, api_key: Optional[str] = None, model: str = "gpt-5-mini"):
+    def __init__(self, api_key: str | None = None, model: str = "gpt-5-mini"):
         """
         Initialize LLM code generator.
 
@@ -41,8 +42,9 @@ class LLMCodeGenerator:
         if HAS_OPENAI:
             self.client = openai.OpenAI(api_key=self.api_key)
 
-    def generate_cpp_for_operation(self, operation: IROperation,
-                                   context: Dict[str, Any]) -> str:
+    def generate_cpp_for_operation(
+        self, operation: IROperation, context: dict[str, Any]
+    ) -> str | None:
         """
         Generate C++ code for a single operation using LLM.
 
@@ -58,11 +60,12 @@ class LLMCodeGenerator:
         response = self._call_llm(prompt)
 
         # Extract C++ code from response
-        cpp_code = self._extract_code(response)
+        if response:
+            cpp_code = self._extract_code(response)
+            return cpp_code
+        return None
 
-        return cpp_code
-
-    def _build_prompt(self, operation: IROperation, context: Dict[str, Any]) -> str:
+    def _build_prompt(self, operation: IROperation, context: dict[str, Any]) -> str:
         """Build a prompt for the LLM using few-shot learning."""
         sections = [
             "You are an expert C++ programmer tasked with converting Python preprocessing operations to C++.",
@@ -74,9 +77,9 @@ class LLMCodeGenerator:
             "## Your C++ Code",
             "Generate the C++ code below (only code, no explanations):",
             "",
-            "```cpp"
+            "```cpp",
         ]
-        return '\n'.join(sections)
+        return "\n".join(sections)
 
     def _build_prompt_context(self) -> str:
         """Build context section of the prompt."""
@@ -86,8 +89,9 @@ You are converting a Python data preprocessing pipeline to C++. The available C+
 - Eigen for linear algebra (NumPy equivalent)
 - Standard C++17"""
 
-    def _build_prompt_operation(self, operation: IROperation,
-                                context: Dict[str, Any]) -> str:
+    def _build_prompt_operation(
+        self, operation: IROperation, context: dict[str, Any]
+    ) -> str:
         """Build operation section of the prompt."""
         return f"""## Current Operation
 The operation to convert is represented in JSON (Intermediate Representation):
@@ -97,7 +101,7 @@ The operation to convert is represented in JSON (Intermediate Representation):
 ```
 
 ## Available Variables
-{json.dumps(context.get('available_vars', {}), indent=2)}"""
+{json.dumps(context.get("available_vars", {}), indent=2)}"""
 
     def _build_prompt_task(self, operation: IROperation) -> str:
         """Build task guidelines section of the prompt."""
@@ -131,7 +135,7 @@ cv::Mat {operation.output};
 cv::reduce(array, {operation.output}, 0, cv::REDUCE_AVG);
 ```"""
 
-    def _call_llm(self, prompt: str) -> str:
+    def _call_llm(self, prompt: str) -> str | None:
         """
         Call the LLM API.
 
@@ -142,24 +146,29 @@ cv::reduce(array, {operation.output}, 0, cv::REDUCE_AVG);
             LLM response text
         """
         if not HAS_OPENAI:
-            raise ImportError("openai package not installed. Install with: pip install openai")
+            raise ImportError(
+                "openai package not installed. Install with: pip install openai"
+            )
 
         try:
             # Using OpenAI Chat API (v1.0.0+)
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "You are an expert C++ programmer specializing in data preprocessing code."},
-                    {"role": "user", "content": prompt}
+                    {
+                        "role": "system",
+                        "content": "You are an expert C++ programmer specializing in data preprocessing code.",
+                    },
+                    {"role": "user", "content": prompt},
                 ],
                 temperature=0.1,  # Low temperature for consistent code generation
-                max_tokens=500
+                max_tokens=500,
             )
 
             return response.choices[0].message.content
 
         except Exception as e:
-            raise RuntimeError(f"LLM API call failed: {e}")
+            raise RuntimeError(f"LLM API call failed: {e}") from e
 
     def _extract_code(self, response: str) -> str:
         """
@@ -172,25 +181,27 @@ cv::reduce(array, {operation.output}, 0, cv::REDUCE_AVG);
             Extracted C++ code
         """
         # Remove markdown code blocks if present
-        lines = response.strip().split('\n')
+        lines = response.strip().split("\n")
 
         # Find code block boundaries
         in_code_block = False
         code_lines = []
 
         for line in lines:
-            if line.strip().startswith('```'):
+            if line.strip().startswith("```"):
                 in_code_block = not in_code_block
                 continue
 
-            if in_code_block or not any(line.strip().startswith(x) for x in ['```', '#', '//']):
+            if in_code_block or not any(
+                line.strip().startswith(x) for x in ["```", "#", "//"]
+            ):
                 code_lines.append(line)
 
         # If no code block markers, use entire response
         if not code_lines:
             code_lines = [line for line in lines if line.strip()]
 
-        return '\n'.join(code_lines).strip()
+        return "\n".join(code_lines).strip()
 
     def validate_generated_code(self, code: str) -> bool:
         """
@@ -207,7 +218,7 @@ cv::reduce(array, {operation.output}, 0, cv::REDUCE_AVG);
             return False
 
         # Should contain C++ syntax
-        cpp_keywords = ['cv::', 'Mat', 'std::', 'Eigen::', '=', ';']
+        cpp_keywords = ["cv::", "Mat", "std::", "Eigen::", "=", ";"]
         has_cpp = any(keyword in code for keyword in cpp_keywords)
 
         return has_cpp
@@ -220,7 +231,9 @@ class AnthropicLLMGenerator(LLMCodeGenerator):
     Alternative to OpenAI for code generation.
     """
 
-    def __init__(self, api_key: Optional[str] = None, model: str = "claude-sonnet-4-20250514"):
+    def __init__(
+        self, api_key: str | None = None, model: str = "claude-sonnet-4-20250514"
+    ):
         """
         Initialize Anthropic Claude generator.
 
@@ -239,26 +252,27 @@ class AnthropicLLMGenerator(LLMCodeGenerator):
 
         try:
             import anthropic
-            self.client = anthropic.Anthropic(api_key=self.api_key)
-        except ImportError:
-            raise ImportError("anthropic package not installed. Install with: pip install anthropic")
 
-    def _call_llm(self, prompt: str) -> str:
+            self.client = anthropic.Anthropic(api_key=self.api_key)
+        except ImportError as e:
+            raise ImportError(
+                "anthropic package not installed. Install with: pip install anthropic"
+            ) from e
+
+    def _call_llm(self, prompt: str) -> str | None:
         """Call Anthropic Claude API"""
         try:
             message = self.client.messages.create(
                 model=self.model,
                 max_tokens=1024,
                 temperature=0.1,
-                messages=[
-                    {"role": "user", "content": prompt}
-                ]
+                messages=[{"role": "user", "content": prompt}],
             )
 
             return message.content[0].text
 
         except Exception as e:
-            raise RuntimeError(f"Claude API call failed: {e}")
+            raise RuntimeError(f"Claude API call failed: {e}") from e
 
 
 class VertexAILLMGenerator(LLMCodeGenerator):
@@ -269,9 +283,12 @@ class VertexAILLMGenerator(LLMCodeGenerator):
     Requires: ANTHROPIC_VERTEX_PROJECT_ID, CLOUD_ML_REGION env vars.
     """
 
-    def __init__(self, project_id: Optional[str] = None,
-                 region: Optional[str] = None,
-                 model: str = "claude-sonnet-4-20250514"):
+    def __init__(
+        self,
+        project_id: str | None = None,
+        region: str | None = None,
+        model: str = "claude-sonnet-4-20250514",
+    ):
         """
         Initialize Vertex AI Claude generator.
 
@@ -280,6 +297,8 @@ class VertexAILLMGenerator(LLMCodeGenerator):
             region: GCP region (or set CLOUD_ML_REGION env var)
             model: Claude model to use via Vertex AI
         """
+        from anthropic import NotGiven
+
         self.model = model
         self.project_id = project_id or os.getenv("ANTHROPIC_VERTEX_PROJECT_ID")
         self.region = region or os.getenv("CLOUD_ML_REGION", "us-east5")
@@ -293,38 +312,36 @@ class VertexAILLMGenerator(LLMCodeGenerator):
         # Check if Vertex AI mode is enabled
         use_vertex = os.getenv("CLAUDE_CODE_USE_VERTEX", "0") == "1"
         if not use_vertex:
-            raise ValueError(
-                "CLAUDE_CODE_USE_VERTEX=1 must be set to use Vertex AI"
-            )
+            raise ValueError("CLAUDE_CODE_USE_VERTEX=1 must be set to use Vertex AI")
 
         try:
             import anthropic
+
             self.client = anthropic.AnthropicVertex(
-                project_id=self.project_id,
-                region=self.region
+                project_id=self.project_id, region=self.region or NotGiven()
             )
-            print(f"✓ Using Vertex AI (Project: {self.project_id}, Region: {self.region})")
-        except ImportError:
+            print(
+                f"✓ Using Vertex AI (Project: {self.project_id}, Region: {self.region})"
+            )
+        except ImportError as e:
             raise ImportError(
                 "anthropic[vertex] package not installed. "
                 "Install with: pip install 'anthropic[vertex]'"
-            )
+            ) from e
         except Exception as e:
-            raise RuntimeError(f"Failed to initialize Vertex AI client: {e}")
+            raise RuntimeError(f"Failed to initialize Vertex AI client: {e}") from e
 
-    def _call_llm(self, prompt: str) -> str:
+    def _call_llm(self, prompt: str) -> str | None:
         """Call Anthropic Claude via Vertex AI"""
         try:
             message = self.client.messages.create(
                 model=self.model,
                 max_tokens=1024,
                 temperature=0.1,
-                messages=[
-                    {"role": "user", "content": prompt}
-                ]
+                messages=[{"role": "user", "content": prompt}],
             )
 
             return message.content[0].text
 
         except Exception as e:
-            raise RuntimeError(f"Vertex AI API call failed: {e}")
+            raise RuntimeError(f"Vertex AI API call failed: {e}") from e

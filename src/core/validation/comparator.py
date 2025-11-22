@@ -1,8 +1,9 @@
 """Result Comparator for numerical output validation."""
 
-import numpy as np
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
+
+import numpy as np
 
 
 class ResultComparator:
@@ -19,8 +20,9 @@ class ResultComparator:
         """
         self.results_dir = Path(results_dir)
 
-    def compare_outputs(self, function_name: str,
-                       rtol: float = 1e-4, atol: float = 1e-5) -> Dict[str, Any]:
+    def compare_outputs(
+        self, function_name: str, rtol: float = 1e-4, atol: float = 1e-5
+    ) -> dict[str, Any]:
         """
         Compare Python and C++ outputs.
 
@@ -52,31 +54,39 @@ class ResultComparator:
             )
 
         except Exception as e:
-            return {'success': False, 'error': f'Comparison failed: {str(e)}'}
+            return {"success": False, "error": f"Comparison failed: {str(e)}"}
 
-    def _validate_result_files(self, python_file: Path, cpp_file: Path) -> Optional[dict]:
+    def _validate_result_files(self, python_file: Path, cpp_file: Path) -> dict | None:
         """Validate that result files exist."""
         if not python_file.exists():
-            return {'success': False, 'error': f'Python result not found: {python_file}'}
+            return {
+                "success": False,
+                "error": f"Python result not found: {python_file}",
+            }
 
         if not cpp_file.exists():
-            return {'success': False, 'error': f'C++ result not found: {cpp_file}'}
+            return {"success": False, "error": f"C++ result not found: {cpp_file}"}
 
         return None
 
-    def _check_shape_compatibility(self, python_result: np.ndarray,
-                                   cpp_result: np.ndarray) -> Optional[dict]:
+    def _check_shape_compatibility(
+        self, python_result: np.ndarray, cpp_result: np.ndarray
+    ) -> dict | None:
         """Check if array shapes match."""
         if python_result.shape != cpp_result.shape:
             return {
-                'success': False,
-                'error': f'Shape mismatch: Python {python_result.shape} vs C++ {cpp_result.shape}'
+                "success": False,
+                "error": f"Shape mismatch: Python {python_result.shape} vs C++ {cpp_result.shape}",
             }
         return None
 
-    def _compare_structured_arrays(self, python_result: np.ndarray,
-                                   cpp_result: np.ndarray,
-                                   rtol: float, atol: float) -> dict:
+    def _compare_structured_arrays(
+        self,
+        python_result: np.ndarray,
+        cpp_result: np.ndarray,
+        rtol: float,
+        atol: float,
+    ) -> dict:
         """Compare structured arrays field by field."""
         all_close = True
         max_abs_diff = 0.0
@@ -98,26 +108,32 @@ class ResultComparator:
         mean_abs_diff /= total_elements if total_elements > 0 else 1
 
         return {
-            'success': True,
-            'is_close': all_close,
-            'dtype_match': False,  # Dtypes will differ (int64 vs int32)
-            'python_dtype': str(python_result.dtype),
-            'cpp_dtype': str(cpp_result.dtype),
-            'shape': python_result.shape,
-            'max_abs_diff': max_abs_diff,
-            'mean_abs_diff': mean_abs_diff,
-            'max_rel_diff': 0.0,
-            'mean_rel_diff': 0.0,
-            'match_percentage': 100.0 if all_close else 0.0,
-            'total_elements': total_elements
+            "success": True,
+            "is_close": all_close,
+            "dtype_match": False,  # Dtypes will differ (int64 vs int32)
+            "python_dtype": str(python_result.dtype),
+            "cpp_dtype": str(cpp_result.dtype),
+            "shape": python_result.shape,
+            "max_abs_diff": max_abs_diff,
+            "mean_abs_diff": mean_abs_diff,
+            "max_rel_diff": 0.0,
+            "mean_rel_diff": 0.0,
+            "match_percentage": 100.0 if all_close else 0.0,
+            "total_elements": total_elements,
         }
 
-    def _compute_comparison_metrics(self, python_result: np.ndarray,
-                                    cpp_result: np.ndarray,
-                                    rtol: float, atol: float) -> dict:
+    def _compute_comparison_metrics(
+        self,
+        python_result: np.ndarray,
+        cpp_result: np.ndarray,
+        rtol: float,
+        atol: float,
+    ) -> dict:
         """Compute numerical comparison metrics."""
         if python_result.dtype.names is not None:
-            return self._compare_structured_arrays(python_result, cpp_result, rtol, atol)
+            return self._compare_structured_arrays(
+                python_result, cpp_result, rtol, atol
+            )
 
         abs_diff = np.abs(python_result - cpp_result)
         rel_diff = abs_diff / (np.abs(python_result) + 1e-10)
@@ -126,22 +142,23 @@ class ResultComparator:
         match_percentage = 100.0 * np.sum(close_elements) / close_elements.size
 
         return {
-            'success': True,
-            'is_close': np.allclose(python_result, cpp_result, rtol=rtol, atol=atol),
-            'dtype_match': python_result.dtype == cpp_result.dtype,
-            'python_dtype': str(python_result.dtype),
-            'cpp_dtype': str(cpp_result.dtype),
-            'shape': python_result.shape,
-            'max_abs_diff': float(np.max(abs_diff)),
-            'mean_abs_diff': float(np.mean(abs_diff)),
-            'max_rel_diff': float(np.max(rel_diff)),
-            'mean_rel_diff': float(np.mean(rel_diff)),
-            'match_percentage': float(match_percentage),
-            'total_elements': int(close_elements.size)
+            "success": True,
+            "is_close": np.allclose(python_result, cpp_result, rtol=rtol, atol=atol),
+            "dtype_match": python_result.dtype == cpp_result.dtype,
+            "python_dtype": str(python_result.dtype),
+            "cpp_dtype": str(cpp_result.dtype),
+            "shape": python_result.shape,
+            "max_abs_diff": float(np.max(abs_diff)),
+            "mean_abs_diff": float(np.mean(abs_diff)),
+            "max_rel_diff": float(np.max(rel_diff)),
+            "mean_rel_diff": float(np.mean(rel_diff)),
+            "match_percentage": float(match_percentage),
+            "total_elements": int(close_elements.size),
         }
 
-    def print_comparison(self, comparison: Dict[str, Any],
-                        python_time: float, cpp_time: float):
+    def print_comparison(
+        self, comparison: dict[str, Any], python_time: float, cpp_time: float
+    ):
         """
         Print formatted comparison results.
 
@@ -150,11 +167,11 @@ class ResultComparator:
             python_time: Python execution time in seconds
             cpp_time: C++ execution time in seconds
         """
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)
         print("VALIDATION RESULTS")
-        print("="*70)
+        print("=" * 70)
 
-        if not comparison['success']:
+        if not comparison["success"]:
             print(f"❌ Comparison failed: {comparison['error']}")
             return
 
@@ -164,38 +181,40 @@ class ResultComparator:
         print(f"  Total elements: {comparison['total_elements']:,}")
         print(f"  Match percentage: {comparison['match_percentage']:.2f}%")
 
-        if comparison['is_close']:
-            print(f"  Status: ✅ PASSED (within tolerance)")
+        if comparison["is_close"]:
+            print("  Status: ✅ PASSED (within tolerance)")
         else:
-            print(f"  Status: ⚠️  DIFFERENCES DETECTED")
+            print("  Status: ⚠️  DIFFERENCES DETECTED")
 
-        print(f"\n  Absolute differences:")
+        print("\n  Absolute differences:")
         print(f"    Max: {comparison['max_abs_diff']:.6e}")
         print(f"    Mean: {comparison['mean_abs_diff']:.6e}")
 
-        print(f"\n  Relative differences:")
+        print("\n  Relative differences:")
         print(f"    Max: {comparison['max_rel_diff']:.6e}")
         print(f"    Mean: {comparison['mean_rel_diff']:.6e}")
 
-        if not comparison['dtype_match']:
-            print(f"\n  ⚠️  Dtype mismatch: Python {comparison['python_dtype']} vs C++ {comparison['cpp_dtype']}")
+        if not comparison["dtype_match"]:
+            print(
+                f"\n  ⚠️  Dtype mismatch: Python {comparison['python_dtype']} vs C++ {comparison['cpp_dtype']}"
+            )
 
         # Performance comparison
         print("\n⚡ Performance Comparison:")
-        print(f"  Python execution time: {python_time*1000:.3f} ms")
-        print(f"  C++ execution time: {cpp_time*1000:.3f} ms")
+        print(f"  Python execution time: {python_time * 1000:.3f} ms")
+        print(f"  C++ execution time: {cpp_time * 1000:.3f} ms")
 
         if cpp_time > 0:
             speedup = python_time / cpp_time
             print(f"  Speedup: {speedup:.2f}x")
 
             if speedup > 1.5:
-                print(f"  🚀 C++ is significantly faster!")
+                print("  🚀 C++ is significantly faster!")
             elif speedup > 1.0:
-                print(f"  ✓ C++ is faster")
+                print("  ✓ C++ is faster")
             elif speedup > 0.8:
-                print(f"  ≈ Similar performance")
+                print("  ≈ Similar performance")
             else:
-                print(f"  ⚠️  C++ is slower (possible overhead)")
+                print("  ⚠️  C++ is slower (possible overhead)")
 
-        print("\n" + "="*70)
+        print("\n" + "=" * 70)

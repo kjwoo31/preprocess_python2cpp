@@ -1,16 +1,17 @@
 """Python AST Parser for extracting code structure information."""
 
 import ast
-from typing import List, Dict, Any, Optional, Set
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
 class ImportInfo:
     """Information about an import statement."""
+
     module: str
-    alias: Optional[str] = None
-    imported_names: List[str] = None
+    alias: str | None = None
+    imported_names: list[str] = None
 
     def __post_init__(self):
         if self.imported_names is None:
@@ -20,11 +21,12 @@ class ImportInfo:
 @dataclass
 class FunctionInfo:
     """Information about a function definition."""
+
     name: str
-    args: List[str]
-    returns: Optional[str]
-    body: List[ast.stmt]
-    decorators: List[str]
+    args: list[str]
+    returns: str | None
+    body: list[ast.stmt]
+    decorators: list[str]
     lineno: int
 
 
@@ -41,9 +43,9 @@ class PythonASTParser:
     """
 
     def __init__(self):
-        self.imports: List[ImportInfo] = []
-        self.functions: List[FunctionInfo] = []
-        self.global_assignments: Dict[str, ast.AST] = {}
+        self.imports: list[ImportInfo] = []
+        self.functions: list[FunctionInfo] = []
+        self.global_assignments: dict[str, ast.AST] = {}
 
     def parse(self, source_code: str) -> ast.Module:
         """
@@ -63,7 +65,7 @@ class PythonASTParser:
             self._analyze_tree(tree)
             return tree
         except SyntaxError as e:
-            raise SyntaxError(f"Failed to parse Python code: {e}")
+            raise SyntaxError(f"Failed to parse Python code: {e}") from e
 
     def _analyze_tree(self, tree: ast.Module):
         """Analyze AST tree and extract information."""
@@ -78,19 +80,13 @@ class PythonASTParser:
     def _extract_import(self, node: ast.Import):
         """Extract information from import statement."""
         for alias in node.names:
-            self.imports.append(ImportInfo(
-                module=alias.name,
-                alias=alias.asname
-            ))
+            self.imports.append(ImportInfo(module=alias.name, alias=alias.asname))
 
     def _extract_import_from(self, node: ast.ImportFrom):
         """Extract information from 'from X import Y' statement."""
-        module = node.module or ''
+        module = node.module or ""
         imported_names = [alias.name for alias in node.names]
-        self.imports.append(ImportInfo(
-            module=module,
-            imported_names=imported_names
-        ))
+        self.imports.append(ImportInfo(module=module, imported_names=imported_names))
 
     def _extract_function(self, node: ast.FunctionDef):
         """Extract information from function definition."""
@@ -99,14 +95,16 @@ class PythonASTParser:
 
         returns = ast.unparse(node.returns) if node.returns else None
 
-        self.functions.append(FunctionInfo(
-            name=node.name,
-            args=args,
-            returns=returns,
-            body=node.body,
-            decorators=decorators,
-            lineno=node.lineno
-        ))
+        self.functions.append(
+            FunctionInfo(
+                name=node.name,
+                args=args,
+                returns=returns,
+                body=node.body,
+                decorators=decorators,
+                lineno=node.lineno,
+            )
+        )
 
     def _get_decorator_name(self, decorator: ast.expr) -> str:
         """Extract decorator name from AST node."""
@@ -114,7 +112,7 @@ class PythonASTParser:
             return decorator.id
         return ast.unparse(decorator)
 
-    def get_library_usage(self) -> Set[str]:
+    def get_library_usage(self) -> set[str]:
         """
         Get set of all imported libraries.
 
@@ -123,11 +121,11 @@ class PythonASTParser:
         """
         libraries = set()
         for imp in self.imports:
-            base_lib = imp.module.split('.')[0]
+            base_lib = imp.module.split(".")[0]
             libraries.add(base_lib)
         return libraries
 
-    def get_function_calls(self, tree: ast.Module) -> List[Dict[str, Any]]:
+    def get_function_calls(self, tree: ast.Module) -> list[dict[str, Any]]:
         """
         Extract all function calls from the AST.
 
@@ -142,10 +140,10 @@ class PythonASTParser:
         class CallVisitor(ast.NodeVisitor):
             def visit_Call(self, node):
                 call_info = {
-                    'func': ast.unparse(node.func),
-                    'args': [ast.unparse(arg) for arg in node.args],
-                    'kwargs': {kw.arg: ast.unparse(kw.value) for kw in node.keywords},
-                    'lineno': node.lineno
+                    "func": ast.unparse(node.func),
+                    "args": [ast.unparse(arg) for arg in node.args],
+                    "kwargs": {kw.arg: ast.unparse(kw.value) for kw in node.keywords},
+                    "lineno": node.lineno,
                 }
                 calls.append(call_info)
                 self.generic_visit(node)
@@ -154,7 +152,7 @@ class PythonASTParser:
         visitor.visit(tree)
         return calls
 
-    def get_assignments(self, tree: ast.Module) -> List[Dict[str, Any]]:
+    def get_assignments(self, tree: ast.Module) -> list[dict[str, Any]]:
         """
         Extract all assignment statements from the AST.
 
@@ -170,19 +168,19 @@ class PythonASTParser:
             def visit_Assign(self, node):
                 for target in node.targets:
                     assign_info = {
-                        'target': ast.unparse(target),
-                        'value': ast.unparse(node.value),
-                        'lineno': node.lineno
+                        "target": ast.unparse(target),
+                        "value": ast.unparse(node.value),
+                        "lineno": node.lineno,
                     }
                     assignments.append(assign_info)
                 self.generic_visit(node)
 
             def visit_AnnAssign(self, node):
                 assign_info = {
-                    'target': ast.unparse(node.target),
-                    'value': ast.unparse(node.value) if node.value else None,
-                    'annotation': ast.unparse(node.annotation),
-                    'lineno': node.lineno
+                    "target": ast.unparse(node.target),
+                    "value": ast.unparse(node.value) if node.value else None,
+                    "annotation": ast.unparse(node.annotation),
+                    "lineno": node.lineno,
                 }
                 assignments.append(assign_info)
                 self.generic_visit(node)

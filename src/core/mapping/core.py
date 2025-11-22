@@ -1,8 +1,8 @@
 """Code Mapper for IR to C++ operation mapping."""
 
-from typing import List, Dict, Optional, Set
-from core.intermediate.schema import IRPipeline, IROperation, OperationType
-from .database import MappingDatabase, FunctionMapping
+from core.intermediate.schema import IROperation, IRPipeline, OperationType
+
+from .database import FunctionMapping, MappingDatabase
 
 
 class CodeMapper:
@@ -12,7 +12,7 @@ class CodeMapper:
     This class bridges the IR and C++ code generation phases.
     """
 
-    def __init__(self, mapping_db: Optional[MappingDatabase] = None):
+    def __init__(self, mapping_db: MappingDatabase | None = None):
         """
         Initialize the mapper.
 
@@ -22,7 +22,7 @@ class CodeMapper:
         """
         self.db = mapping_db or MappingDatabase()
 
-    def map_operation(self, operation: IROperation) -> Optional[FunctionMapping]:
+    def map_operation(self, operation: IROperation) -> FunctionMapping | None:
         """
         Map an IR operation to C++ function.
 
@@ -44,8 +44,11 @@ class CodeMapper:
 
             # Try common patterns
             # Check if it's a numpy array method
-            if operation.source_lib == 'numpy' or 'ndarray' in operation.source_object.lower():
-                mapping = self.db.get_mapping('numpy.ndarray', operation.function)
+            if (
+                operation.source_lib == "numpy"
+                or "ndarray" in operation.source_object.lower()
+            ):
+                mapping = self.db.get_mapping("numpy.ndarray", operation.function)
                 if mapping:
                     return mapping
 
@@ -55,7 +58,7 @@ class CodeMapper:
 
         return None
 
-    def get_required_headers(self, pipeline: IRPipeline) -> List[str]:
+    def get_required_headers(self, pipeline: IRPipeline) -> list[str]:
         """
         Get all C++ headers required for a pipeline.
 
@@ -68,9 +71,9 @@ class CodeMapper:
         headers = set()
 
         # Always include standard headers
-        headers.add('<iostream>')
-        headers.add('<string>')
-        headers.add('<vector>')
+        headers.add("<iostream>")
+        headers.add("<string>")
+        headers.add("<vector>")
 
         # Add headers based on operations
         for op in pipeline.operations:
@@ -78,9 +81,9 @@ class CodeMapper:
             if mapping:
                 headers.update(mapping.cpp_headers)
 
-        return sorted(list(headers))
+        return sorted(headers)
 
-    def get_unmapped_operations(self, pipeline: IRPipeline) -> List[IROperation]:
+    def get_unmapped_operations(self, pipeline: IRPipeline) -> list[IROperation]:
         """
         Find operations that don't have mappings.
 
@@ -100,7 +103,7 @@ class CodeMapper:
 
         return unmapped
 
-    def get_required_libraries(self, pipeline: IRPipeline) -> Set[str]:
+    def get_required_libraries(self, pipeline: IRPipeline) -> set[str]:
         """
         Get set of C++ libraries required for pipeline.
 
@@ -119,7 +122,7 @@ class CodeMapper:
 
         return libraries
 
-    def suggest_cmake_packages(self, pipeline: IRPipeline) -> List[str]:
+    def suggest_cmake_packages(self, pipeline: IRPipeline) -> list[str]:
         """
         Suggest CMake find_package() calls for the pipeline.
 
@@ -132,10 +135,10 @@ class CodeMapper:
         libs = self.get_required_libraries(pipeline)
 
         cmake_map = {
-            'cv': 'OpenCV',
-            'Eigen': 'Eigen3',
-            'fftw': 'FFTW3',
-            'sndfile': 'SndFile'
+            "cv": "OpenCV",
+            "Eigen": "Eigen3",
+            "fftw": "FFTW3",
+            "sndfile": "SndFile",
         }
 
         packages = []
