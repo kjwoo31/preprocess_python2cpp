@@ -63,6 +63,30 @@ def preprocess_with_color_conversion(image_path: str):
 
     return img_float
 
+def preprocess_with_color_conversion_and_resize(image_path: str):
+    """
+    Image preprocessing with BGR to RGB conversion and resize.
+
+    Args:
+        image_path: Path to input image
+
+    Returns:
+        Preprocessed image with RGB color space and resized to 256x256
+    """
+    # Load image (OpenCV loads as BGR)
+    img = cv2.imread(image_path)
+
+    # Convert BGR to RGB
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+    # Resize to 256x256
+    img_resized = cv2.resize(img_rgb, (256, 256))
+
+    # Convert to float and normalize
+    img_float = img_resized.astype(np.float32) / 255.0
+
+    return img_float
+
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
@@ -71,6 +95,8 @@ if __name__ == '__main__':
         sys.exit(1)
 
     image_path = sys.argv[1]
+    a = 1
+    img = cv2.imread(image_path)
 
     print(f"Processing image: {image_path}")
 

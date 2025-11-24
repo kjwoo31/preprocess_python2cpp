@@ -101,23 +101,21 @@ class CodeGenerator:
 
         return str(project_dir)
 
-    def generate_pipeline(
+    def generate_multi_function(
         self,
-        pre_pipeline: IRPipeline | None,
-        inf_pipeline: IRPipeline | None,
-        post_pipeline: IRPipeline | None,
-        project_name: str = "pipeline",
-        function_name: str | None = None,
+        pipelines: list[IRPipeline],
+        project_name: str,
+        main_functions: list[str],
+        main_block_operations: list,
     ) -> str:
         """
-        Generate separated Pre/Inf/Post pipeline C++ project.
+        Generate complete C++ project from multiple IR pipelines (one file).
 
         Args:
-            pre_pipeline: Preprocessing IR pipeline
-            inf_pipeline: Inference IR pipeline
-            post_pipeline: Postprocessing IR pipeline
-            project_name: Project name
-            function_name: Original function name for validation
+            pipelines: List of IR pipelines to generate code for
+            project_name: Project name (usually the source file name)
+            main_functions: List of function names called in Python's __main__ block
+            main_block_operations: IR operations from __main__ block
 
         Returns:
             Path to generated project directory
@@ -125,149 +123,15 @@ class CodeGenerator:
         project_dir = self.output_dir / project_name
         project_dir.mkdir(parents=True, exist_ok=True)
 
-        self._generate_pipeline_components(
-            project_dir, pre_pipeline, inf_pipeline, post_pipeline
+        self._generate_multi_cpp_file(
+            pipelines, project_dir, project_name, main_functions, main_block_operations
         )
-        self._generate_pipeline_main(
-            project_dir, pre_pipeline, inf_pipeline, post_pipeline, function_name
-        )
-        self._generate_img_common_header(project_dir)
-        self._generate_image_loader_cpp(project_dir)
-        self._generate_pipeline_cmake(project_dir, project_name)
+        self._generate_multi_cmake_file(pipelines, project_dir, project_name)
         self._copy_stb_headers(project_dir)
         self._generate_validator_header(project_dir)
+        self._generate_multi_readme(pipelines, project_dir, project_name)
 
         return str(project_dir)
-
-    def _generate_pipeline_components(
-        self,
-        project_dir: Path,
-        pre: IRPipeline | None,
-        inf: IRPipeline | None,
-        post: IRPipeline | None,
-    ):
-        """Generate C++ files for each pipeline component."""
-        if pre:
-            self._generate_component_files(project_dir, pre, "preprocess")
-        if inf:
-            self._generate_inference_stub(project_dir, inf)
-        if post:
-            self._generate_component_files(project_dir, post, "postprocess")
-
-    def _generate_component_files(
-        self, project_dir: Path, pipeline: IRPipeline, component_name: str
-    ):
-        """Generate .h and .cpp for a pipeline component."""
-        headers = self.mapper.get_required_headers(pipeline)
-        headers = [h for h in headers if "opencv" not in h.lower()]
-        libs = self.mapper.get_required_libraries(pipeline)
-
-        context = {
-            "pipeline": pipeline,
-            "headers": headers,
-            "has_eigen": "Eigen" in libs,
-            "has_opencv": False,
-            "component_name": component_name,
-            "operation_mappings": self._build_operation_mappings(pipeline),
-            "implementations": self.mapper.db.implementations,
-        }
-
-        header_code = self.template_engine.render_cpp_code(
-            "cpp/component.h.j2", context
-        )
-        cpp_code = self.template_engine.render_cpp_code("cpp/component.cpp.j2", context)
-
-        (project_dir / f"{component_name}.h").write_text(header_code)
-        (project_dir / f"{component_name}.cpp").write_text(cpp_code)
-
-        print(f"Generated {component_name} component")
-
-    def _generate_pipeline_main(
-        self,
-        project_dir: Path,
-        pre: IRPipeline | None,
-        inf: IRPipeline | None,
-        post: IRPipeline | None,
-        function_name: str | None = None,
-    ) -> None:
-        """Generate main.cpp orchestrator."""
-        context = {
-            "has_preprocess": pre is not None,
-            "has_inference": inf is not None,
-            "has_postprocess": post is not None,
-            "pre_pipeline": pre,
-            "inf_pipeline": inf,
-            "post_pipeline": post,
-            "function_name": function_name,
-        }
-
-        main_code = self.template_engine.render_cpp_code(
-            "cpp/pipeline_main.cpp.j2", context
-        )
-
-        (project_dir / "main.cpp").write_text(main_code)
-        print("Generated pipeline orchestrator: main.cpp")
-
-    def _generate_inference_stub(
-        self, project_dir: Path, inf_pipeline: IRPipeline | None = None
-    ):
-        """Generate inference stub placeholder."""
-        # Detect if inference returns 1D or 2D array
-        is_2d = False
-        if inf_pipeline and inf_pipeline.metadata:
-            inference_code = inf_pipeline.metadata.get("inference_code", "")
-            # Check if code contains nested array syntax like [[...]]
-            if "[[" in inference_code:
-                is_2d = True
-
-        context = {"is_2d": is_2d}
-        stub_h_code = self.template_engine.render_cpp_code(
-            "cpp/inference_stub.h.j2", context
-        )
-        stub_cpp_code = self.template_engine.render_cpp_code(
-            "cpp/inference_stub.cpp.j2", {}
-        )
-
-        (project_dir / "inference.h").write_text(stub_h_code)
-        (project_dir / "inference.cpp").write_text(stub_cpp_code)
-        print("Generated inference stub")
-
-    def _generate_img_common_header(self, project_dir: Path):
-        """Generate img_common.h header file (pipeline mode only)."""
-        from jinja2 import Environment, FileSystemLoader
-
-        template_dir = Path(__file__).parent.parent.parent / "templates"
-        env = Environment(loader=FileSystemLoader(str(template_dir)))
-        template = env.get_template("headers/img_common.h.j2")
-        common_content = template.render()
-
-        output_file = project_dir / "img_common.h"
-        with open(output_file, "w") as f:
-            f.write(common_content)
-
-        print("Generated common header: img_common.h")
-
-    def _generate_image_loader_cpp(self, project_dir: Path):
-        """Generate image_loader.cpp for STB implementation (pipeline mode only)."""
-        content = """// STB Image implementation
-// Generated by Python-to-C++ Porting Agent
-
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
-"""
-        (project_dir / "image_loader.cpp").write_text(content)
-        print("Generated image_loader.cpp")
-
-    def _generate_pipeline_cmake(self, project_dir: Path, project_name: str):
-        """Generate CMakeLists.txt for pipeline project."""
-        context = {"project_name": project_name, "is_pipeline": True}
-
-        cmake_content = self.template_engine.render_cmake(
-            "cmake/pipeline_cmakelists.txt.j2", context
-        )
-
-        (project_dir / "CMakeLists.txt").write_text(cmake_content)
-        print("Generated pipeline CMakeLists.txt")
 
     def _build_operation_mappings(self, pipeline: IRPipeline) -> dict:
         """Build operation mappings for template."""
@@ -452,6 +316,83 @@ class CodeGenerator:
 
         print(f"Generated C++ file: {output_file}")
 
+    def _generate_multi_cpp_file(
+        self,
+        pipelines: list[IRPipeline],
+        project_dir: Path,
+        project_name: str,
+        main_functions: list[str],
+        main_block_operations: list,
+    ):
+        """Generate C++ source file with multiple functions"""
+        all_headers = set()
+        all_libs = set()
+        all_llm_code = {}
+        all_operation_mappings = {}
+        all_implementations = set()
+
+        pipeline_data = []
+
+        for pipeline in pipelines:
+            if self.use_llm:
+                llm_code = self._process_unmapped_operations(pipeline)
+                all_llm_code.update(llm_code)
+
+            headers = self.mapper.get_required_headers(pipeline)
+            all_headers.update(headers)
+
+            libs = self.mapper.get_required_libraries(pipeline)
+            all_libs.update(libs)
+
+            operation_mappings = {}
+            for op in pipeline.operations:
+                mapping = self.mapper.map_operation(op)
+                if mapping:
+                    operation_mappings[op.id] = mapping
+                    if mapping.inline_impl:
+                        all_implementations.add(mapping.inline_impl)
+
+            all_operation_mappings.update(operation_mappings)
+
+            pipeline_data.append(
+                {
+                    "pipeline": pipeline,
+                    "operation_mappings": operation_mappings,
+                }
+            )
+
+        # Build operation mappings for main block
+        main_block_mappings = {}
+        for op in main_block_operations:
+            mapping = self.mapper.map_operation(op)
+            if mapping:
+                main_block_mappings[op.id] = mapping
+                if mapping.inline_impl:
+                    all_implementations.add(mapping.inline_impl)
+
+        context = {
+            "project_name": project_name,
+            "pipelines": pipeline_data,
+            "main_functions": main_functions,
+            "main_block_operations": main_block_operations,
+            "main_block_mappings": main_block_mappings,
+            "headers": sorted(all_headers),
+            "has_eigen": "Eigen" in all_libs,
+            "has_opencv": "cv" in all_libs,
+            "llm_generated_code": all_llm_code,
+            "all_operation_mappings": all_operation_mappings,
+            "implementations": self.mapper.db.implementations,
+            "all_implementations": all_implementations,
+        }
+
+        cpp_code = self.template_engine.render_cpp_code("cpp/multi.cpp.j2", context)
+
+        output_file = project_dir / f"{project_name}.cpp"
+        with open(output_file, "w") as f:
+            f.write(cpp_code)
+
+        print(f"Generated C++ file: {output_file}")
+
     def _generate_cmake_file(
         self, pipeline: IRPipeline, project_dir: Path, project_name: str
     ):
@@ -468,6 +409,40 @@ class CodeGenerator:
             "has_opencv": "cv" in libs,
             "has_fftw": "fftw" in libs,
             "has_sndfile": "sndfile" in libs,
+        }
+
+        cmake_content = self.template_engine.render_cmake(
+            "cmake/cmakelists.txt.j2", context
+        )
+
+        output_file = project_dir / "CMakeLists.txt"
+        with open(output_file, "w") as f:
+            f.write(cmake_content)
+
+        print(f"Generated CMake file: {output_file}")
+
+    def _generate_multi_cmake_file(
+        self, pipelines: list[IRPipeline], project_dir: Path, project_name: str
+    ):
+        """Generate CMakeLists.txt for multi-function project"""
+        all_packages = set()
+        all_libs = set()
+
+        for pipeline in pipelines:
+            cmake_packages = self.mapper.suggest_cmake_packages(pipeline)
+            all_packages.update(cmake_packages)
+
+            libs = self.mapper.get_required_libraries(pipeline)
+            all_libs.update(libs)
+
+        context = {
+            "project_name": project_name,
+            "source_file": f"{project_name}.cpp",
+            "cmake_packages": sorted(all_packages),
+            "has_eigen": "Eigen" in all_libs,
+            "has_opencv": "cv" in all_libs,
+            "has_fftw": "fftw" in all_libs,
+            "has_sndfile": "sndfile" in all_libs,
         }
 
         cmake_content = self.template_engine.render_cmake(
@@ -524,6 +499,30 @@ class CodeGenerator:
 
         sections = self._build_readme_sections(
             pipeline, project_name, packages, unmapped
+        )
+        readme_content = "\n".join(sections)
+
+        output_file = project_dir / "README.md"
+        output_file.write_text(readme_content)
+
+        print(f"Generated README: {output_file}")
+
+    def _generate_multi_readme(
+        self, pipelines: list[IRPipeline], project_dir: Path, project_name: str
+    ):
+        """Generate README.md for multi-function project."""
+        all_unmapped = []
+        all_packages = set()
+
+        for pipeline in pipelines:
+            unmapped = self.mapper.get_unmapped_operations(pipeline)
+            all_unmapped.extend(unmapped)
+            packages = self.mapper.suggest_cmake_packages(pipeline)
+            all_packages.update(packages)
+
+        function_names = [p.name for p in pipelines]
+        sections = self._build_multi_readme_sections(
+            pipelines, project_name, function_names, sorted(all_packages), all_unmapped
         )
         readme_content = "\n".join(sections)
 
@@ -592,6 +591,7 @@ make
 ### Run
 
 ```bash
+# Run all functions (like Python's if __name__ == "__main__")
 ./{project_name} <input_file>
 ```
 """
@@ -645,6 +645,65 @@ To validate the generated C++ code against Python output:
 
 This code was auto-generated by the Python-to-C++ Porting Agent.
 Manual review and testing is recommended before production use.
+"""
+
+    def _build_multi_readme_sections(
+        self,
+        pipelines: list[IRPipeline],
+        project_name: str,
+        function_names: list[str],
+        packages: list[str],
+        unmapped: list,
+    ) -> list[str]:
+        """Build README sections for multi-function project."""
+        return [
+            self._build_multi_readme_header(pipelines, project_name, function_names),
+            self._build_requirements_section(packages),
+            self._build_build_instructions(project_name),
+            self._build_multi_pipeline_info(pipelines),
+            self._build_unmapped_section(unmapped),
+            self._build_validation_section(),
+            self._build_notes_section(),
+        ]
+
+    def _build_multi_readme_header(
+        self, pipelines: list[IRPipeline], project_name: str, function_names: list[str]
+    ) -> str:
+        """Build README header for multi-function project."""
+        functions_list = "\n".join(f"- `{name}`" for name in function_names)
+        return f"""# {project_name}
+
+Auto-generated C++ implementation of Python preprocessing functions.
+
+## Functions
+
+{functions_list}
+
+## Generated Files
+
+- `{project_name}.cpp` - C++ implementation with all functions
+- `CMakeLists.txt` - CMake build configuration
+- `validator.h` - Numerical validation utilities
+"""
+
+    def _build_multi_pipeline_info(self, pipelines: list[IRPipeline]) -> str:
+        """Build pipeline information for multi-function project."""
+        all_libs = set()
+        total_ops = 0
+
+        for pipeline in pipelines:
+            all_libs.update(pipeline.metadata.get("libraries", []))
+            total_ops += len(pipeline.operations)
+
+        libraries = ", ".join(sorted(all_libs))
+
+        return f"""## Pipeline Information
+
+**Source Libraries:** {libraries}
+
+**Total Operations:** {total_ops}
+
+**Functions:** {len(pipelines)}
 """
 
     def generate_report(self, pipeline: IRPipeline) -> str:

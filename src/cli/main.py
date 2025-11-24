@@ -4,13 +4,11 @@ import argparse
 import ast
 import sys
 from pathlib import Path
-from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core.analysis.inferencer import TypeInferenceEngine
 from core.analysis.parser import PythonASTParser
-from core.analysis.separator import PipelineSeparator
 from core.generation.generator import CodeGenerator
 from core.intermediate.builder import IRBuilder
 from core.intermediate.schema import IRPipeline
@@ -36,9 +34,6 @@ def create_argument_parser() -> argparse.ArgumentParser:
         "--no-validate", action="store_true", help="Skip validation (default: validate)"
     )
     parser.add_argument("--test-input", help="Test input file for validation")
-    parser.add_argument(
-        "--pipeline", action="store_true", help="Split conversion mode (Pre/Inf/Post)"
-    )
     parser.add_argument(
         "--recursive", action="store_true", help="Multi-file dependency resolution"
     )
@@ -69,9 +64,9 @@ def parse_python_file(file_path: str, verbose: bool = False) -> PythonASTParser:
         print(f"Reading Python source: {file_path}")
 
     parser = PythonASTParser()
-    parser.parse(source_code)
+    tree = parser.parse(source_code)
 
-    return parser
+    return source_code, parser, tree
 
 
 def _handle_ir_only_mode(
@@ -94,174 +89,74 @@ def _process_conversions(
     args: argparse.Namespace,
 ) -> list[str]:
     """Process all function conversions and validations."""
-    generated_projects = []
-
-    for i, func_name in enumerate(functions, 1):
-        if len(functions) > 1:
-            print(f"\n{'=' * 60}")
-            print(f"Converting function {i}/{len(functions)}: {func_name}")
-            print("=" * 60)
-
-        project_dir = convert_function(
-            func_name, ast_parser, tree, generator, args.verbose
-        )
-        generated_projects.append(project_dir)
-
-        should_validate = not args.no_validate
-        if should_validate and args.test_input:
-            validate_generated_code(
-                project_dir, func_name, args.input, args.test_input, args.verbose
-            )
-
-    return generated_projects
-
-
-def _print_summary(generated_projects: list[str]) -> None:
-    """Print conversion summary."""
-    print(f"\n{'=' * 60}")
-    print(f"Summary: {len(generated_projects)} function(s) converted successfully")
-    print("=" * 60)
-    for proj in generated_projects:
-        print(f"  - {proj}")
-
-
-def convert_function(
-    func_name: str,
-    parser: PythonASTParser,
-    tree: ast.Module,
-    generator: CodeGenerator,
-    verbose: bool,
-) -> str:
-    """Convert single function to C++."""
-    if verbose:
-        print(f"\n{'=' * 60}")
-        print(f"Converting: {func_name}")
-        print("=" * 60)
-
     type_engine = TypeInferenceEngine()
     ir_builder = IRBuilder()
-    pipeline = ir_builder.build_pipeline(parser, func_name, tree, type_engine)
 
-    project_dir = generator.generate(pipeline)
+    # Get functions called in __main__ block
+    main_functions = ast_parser.get_main_block_functions(tree)
+    if args.verbose:
+        print(f"All functions found: {', '.join(functions)}")
+        if main_functions:
+            print(f"Functions in __main__ block: {', '.join(main_functions)}")
 
-    if verbose:
-        report = generator.generate_report(pipeline)
-        print(report)
+    # Only convert functions that are called in __main__
+    if main_functions:
+        functions_to_convert = [f for f in functions if f in main_functions]
+        if args.verbose:
+            print(f"Converting only: {', '.join(functions_to_convert)}")
+    else:
+        # If no __main__ block, convert all functions
+        functions_to_convert = functions
+
+    pipelines = []
+    for func_name in functions_to_convert:
+        pipeline = ir_builder.build_pipeline(ast_parser, func_name, tree, type_engine)
+        pipelines.append(pipeline)
+
+    # Get __main__ block operations
+    main_block_body = ast_parser.get_main_block_body(tree)
+    main_block_operations = []
+    if main_block_body:
+        main_block_operations = ir_builder.build_main_block_operations(
+            main_block_body, type_engine
+        )
+        if args.verbose:
+            print(f"Main block operations: {len(main_block_operations)}")
+
+    source_file_name = Path(args.input).stem
+    project_dir = generator.generate_multi_function(
+        pipelines, source_file_name, main_functions, main_block_operations
+    )
 
     print(f"✓ C++ project generated: {project_dir}")
 
-    return project_dir
+    if args.verbose:
+        for pipeline in pipelines:
+            report = generator.generate_report(pipeline)
+            print(report)
 
-
-def process_pipeline_conversion(
-    source_file: str,
-    generator: CodeGenerator,
-    verbose: bool,
-    test_input: str | None = None,
-    should_validate: bool = True,
-) -> str:
-    """Process pipeline conversion (Pre/Inf/Post split)."""
-    source_code, tree = _load_source_code(source_file)
-    separated = PipelineSeparator().separate(source_code, tree)
-
-    pre_pipeline, inf_pipeline, post_pipeline = _build_pipelines_from_separation(
-        separated, source_code
-    )
-
-    func_name = _extract_function_name(tree) or "pipeline"
-
-    project_dir = generator.generate_pipeline(
-        pre_pipeline,
-        inf_pipeline,
-        post_pipeline,
-        project_name=func_name,
-        function_name=func_name,
-    )
-
-    print(f"✓ Pipeline project generated: {project_dir}")
-
-    if should_validate and test_input:
-        validate_generated_code(
+    should_validate = not args.no_validate
+    if should_validate and args.test_input:
+        # Validate only converted functions
+        validate_multi_functions(
             project_dir,
-            func_name,
-            source_file,
-            test_input,
-            verbose,
-            project_name=func_name,
+            functions_to_convert,
+            args.input,
+            args.test_input,
+            args.verbose,
+            source_file_name,
         )
 
-    return project_dir
+    return [project_dir]
 
 
-def _load_source_code(source_file: str) -> tuple[str, ast.Module]:
-    """Load and parse Python source file."""
-    with open(source_file) as f:
-        source_code = f.read()
-        tree = __import__("ast").parse(source_code)
-    return source_code, tree
-
-
-def _build_pipelines_from_separation(
-    separated: Any, source_code: str
-) -> tuple[IRPipeline | None, IRPipeline | None, IRPipeline | None]:
-    """Build IR pipelines from separated segments."""
-    type_engine = TypeInferenceEngine()
-    ast_parser = PythonASTParser()
-    ast_parser.parse(source_code)
-
-    pre_pipeline = _build_preprocess_pipeline(separated, type_engine, ast_parser)
-    inf_pipeline = _build_inference_pipeline(separated, type_engine, ast_parser)
-    post_pipeline = _build_postprocess_pipeline(separated, type_engine, ast_parser)
-
-    return pre_pipeline, inf_pipeline, post_pipeline
-
-
-def _build_preprocess_pipeline(
-    separated: Any, type_engine: TypeInferenceEngine, ast_parser: PythonASTParser
-) -> IRPipeline | None:
-    """Build preprocessing pipeline if available."""
-    if not separated.preprocess:
-        return None
-    ir_builder = IRBuilder()
-    return ir_builder.build_pipeline_from_segment(
-        separated.preprocess, "preprocess", type_engine, ast_parser
-    )
-
-
-def _build_inference_pipeline(
-    separated: Any, type_engine: TypeInferenceEngine, ast_parser: PythonASTParser
-) -> IRPipeline | None:
-    """Build inference pipeline if available."""
-    if not separated.inference:
-        return None
-
-    ir_builder = IRBuilder()
-    inf_pipeline = ir_builder.build_pipeline_from_segment(
-        separated.inference, "inference", type_engine, ast_parser
-    )
-    inference_code = "\n".join(ast.unparse(stmt) for stmt in separated.inference.body)
-    inf_pipeline.metadata["inference_code"] = inference_code
-    return inf_pipeline
-
-
-def _build_postprocess_pipeline(
-    separated: Any, type_engine: TypeInferenceEngine, ast_parser: PythonASTParser
-) -> IRPipeline | None:
-    """Build postprocessing pipeline if available."""
-    if not separated.postprocess:
-        return None
-    ir_builder = IRBuilder()
-    return ir_builder.build_pipeline_from_segment(
-        separated.postprocess, "postprocess", type_engine, ast_parser
-    )
-
-
-def _extract_function_name(tree: ast.Module) -> str | None:
-    """Extract function name from AST."""
-    for node in tree.body:
-        if isinstance(node, __import__("ast").FunctionDef):
-            return node.name
-    return None
+def _print_summary(generated_projects: list[str], num_functions: int) -> None:
+    """Print conversion summary."""
+    print(f"\n{'=' * 60}")
+    print(f"Summary: {num_functions} function(s) converted to C++")
+    print("=" * 60)
+    for proj in generated_projects:
+        print(f"  Project: {proj}")
 
 
 def validate_generated_code(
@@ -270,7 +165,7 @@ def validate_generated_code(
     source_file: str,
     test_input: str,
     verbose: bool,
-    project_name: str | None = None,
+    executable_name: str | None = None,
 ) -> None:
     """Build and validate generated C++ code."""
     _print_validation_header(func_name)
@@ -282,19 +177,63 @@ def validate_generated_code(
     if not _build_cpp_project(cpp_runner, project_dir, verbose):
         return
 
-    executable_name = project_name if project_name else func_name
-
     python_time = _run_python_version(
         python_runner, source_file, func_name, test_input, verbose
     )
     if python_time is None:
         return
 
-    cpp_time = _run_cpp_version(cpp_runner, project_dir, executable_name, test_input)
+    exec_name = executable_name if executable_name else func_name
+    cpp_time = _run_cpp_version(cpp_runner, project_dir, exec_name, test_input)
     if cpp_time is None:
         return
 
     _compare_results(comparator, func_name, python_time, cpp_time)
+
+
+def validate_multi_functions(
+    project_dir: str,
+    func_names: list[str],
+    source_file: str,
+    test_input: str,
+    verbose: bool,
+    executable_name: str,
+) -> None:
+    """Build and validate multiple functions independently."""
+    print(f"\n{'=' * 70}")
+    print(f"VALIDATING: {len(func_names)} function(s)")
+    print("=" * 70)
+
+    cpp_runner = CppRunner()
+    python_runner = PythonRunner()
+    comparator = ResultComparator()
+
+    if not _build_cpp_project(cpp_runner, project_dir, verbose):
+        return
+
+    # Run C++ once (executes all functions)
+    print("\n⚙️  Running C++ version (all functions)...")
+    success, cpp_time = cpp_runner.run_executable(
+        project_dir, executable_name, test_input
+    )
+    if not success:
+        print("❌ C++ execution failed")
+        return
+    print(f"✅ C++ execution: {cpp_time * 1000:.3f} ms")
+
+    # Validate each function independently
+    for i, func_name in enumerate(func_names, 1):
+        print(f"\n{'-' * 70}")
+        print(f"[{i}/{len(func_names)}] Validating: {func_name}")
+        print("-" * 70)
+
+        python_time = _run_python_version(
+            python_runner, source_file, func_name, test_input, verbose
+        )
+        if python_time is None:
+            continue
+
+        _compare_results(comparator, func_name, python_time, cpp_time / len(func_names))
 
 
 def _print_validation_header(func_name: str) -> None:
@@ -394,12 +333,7 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
-        ast_parser = parse_python_file(args.input, args.verbose)
-
-        with open(args.input) as f:
-            import ast
-
-            tree = ast.parse(f.read())
+        source_code, ast_parser, tree = parse_python_file(args.input, args.verbose)
 
         functions_to_convert = _determine_functions_to_convert(args, ast_parser)
 
@@ -408,21 +342,18 @@ def main() -> int:
 
         generator = _create_generator(args)
 
-        if args.pipeline:
-            should_validate = not args.no_validate
-            project_dir = process_pipeline_conversion(
-                args.input, generator, args.verbose, args.test_input, should_validate
-            )
-            print(f"\n{'=' * 60}")
-            print(f"Pipeline project generated: {project_dir}")
-            print("=" * 60)
-            return 0
+        main_functions = ast_parser.get_main_block_functions(tree)
+        functions_to_convert_count = (
+            len([f for f in functions_to_convert if f in main_functions])
+            if main_functions
+            else len(functions_to_convert)
+        )
 
         generated_projects = _process_conversions(
             functions_to_convert, ast_parser, tree, generator, args
         )
 
-        _print_summary(generated_projects)
+        _print_summary(generated_projects, functions_to_convert_count)
         return 0
 
     except Exception as e:

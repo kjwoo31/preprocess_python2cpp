@@ -188,3 +188,74 @@ class PythonASTParser:
         visitor = AssignVisitor()
         visitor.visit(tree)
         return assignments
+
+    def get_main_block_functions(self, tree: ast.Module) -> list[str]:
+        """
+        Extract function names called in 'if __name__ == "__main__":' block.
+
+        Args:
+            tree: AST Module node
+
+        Returns:
+            List of function names called in main block
+        """
+        main_functions = []
+
+        for node in tree.body:
+            if isinstance(node, ast.If):
+                # Check if this is the __name__ == "__main__" condition
+                if self._is_main_condition(node.test):
+                    # Extract function calls from the if block
+                    main_functions = self._extract_function_calls_from_block(node.body)
+                    break
+
+        return main_functions
+
+    def get_main_block_body(self, tree: ast.Module) -> list[ast.stmt] | None:
+        """
+        Extract the body of 'if __name__ == "__main__":' block.
+
+        Args:
+            tree: AST Module node
+
+        Returns:
+            List of statements in main block, or None if not found
+        """
+        for node in tree.body:
+            if isinstance(node, ast.If):
+                if self._is_main_condition(node.test):
+                    return node.body
+
+        return None
+
+    def _is_main_condition(self, test_node: ast.expr) -> bool:
+        """Check if test node is __name__ == "__main__" condition."""
+        if isinstance(test_node, ast.Compare):
+            left = test_node.left
+            if isinstance(left, ast.Name) and left.id == "__name__":
+                if len(test_node.ops) == 1 and isinstance(test_node.ops[0], ast.Eq):
+                    if len(test_node.comparators) == 1:
+                        comp = test_node.comparators[0]
+                        if isinstance(comp, ast.Constant) and comp.value == "__main__":
+                            return True
+        return False
+
+    def _extract_function_calls_from_block(self, block: list[ast.stmt]) -> list[str]:
+        """Extract function names from a block of statements."""
+        function_calls = []
+
+        class FunctionCallVisitor(ast.NodeVisitor):
+            def __init__(self):
+                self.calls = []
+
+            def visit_Call(self, node: ast.Call):
+                # Extract simple function calls (not methods)
+                if isinstance(node.func, ast.Name):
+                    self.calls.append(node.func.id)
+                self.generic_visit(node)
+
+        visitor = FunctionCallVisitor()
+        for stmt in block:
+            visitor.visit(stmt)
+
+        return visitor.calls

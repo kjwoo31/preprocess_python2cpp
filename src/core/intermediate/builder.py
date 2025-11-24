@@ -44,33 +44,6 @@ class IRBuilder:
             metadata={"source_file": parser.__class__.__name__, "libraries": libraries},
         )
 
-    def build_pipeline_from_segment(
-        self,
-        segment,
-        name: str,
-        type_engine: TypeInferenceEngine,
-        parser: PythonASTParser,
-    ) -> IRPipeline:
-        """Build IR pipeline from AST segment (for pipeline mode)."""
-        type_context: dict[str, TypeHint] = {}
-
-        inputs = [IRInput(var, TypeHint("auto")) for var in segment.inputs]
-        operations = []
-
-        for i, stmt in enumerate(segment.body):
-            ops = self._extract_operations_from_statement(stmt, type_context, i)
-            operations.extend(ops)
-
-        outputs = [IROutput(var, TypeHint("auto")) for var in segment.outputs]
-
-        return IRPipeline(
-            name=name,
-            inputs=inputs,
-            operations=operations,
-            outputs=outputs,
-            metadata={"source": "pipeline_segment"},
-        )
-
     def _find_function_info(
         self, parser: PythonASTParser, func_name: str
     ) -> FunctionInfo:
@@ -555,4 +528,99 @@ class IRBuilder:
                             outputs.append(IROutput(var_name, var_type))
                     return outputs
 
-        return []
+    def build_main_block_operations(
+        self, main_body: list[ast.stmt], type_engine: TypeInferenceEngine
+    ) -> list[IROperation]:
+        """
+        Build IR operations from __main__ block statements.
+
+        Args:
+            main_body: List of statements from __main__ block
+            type_engine: Type inference engine
+
+        Returns:
+            List of IR operations
+        """
+        # Build a simple type context for main block
+        type_context = {}
+        for stmt in main_body:
+            if isinstance(stmt, ast.Assign):
+                for target in stmt.targets:
+                    if isinstance(target, ast.Name):
+                        # Infer type from assignment
+                        var_type = self._infer_type_from_value(stmt.value)
+                        type_context[target.id] = var_type
+
+        operations = []
+        for i, stmt in enumerate(main_body):
+            ops = self._extract_main_block_statement(stmt, type_context, i)
+            operations.extend(ops)
+
+        return operations
+
+    def _extract_main_block_statement(
+        self, stmt: ast.stmt, type_context: dict, index: int
+    ) -> list[IROperation]:
+        """Extract operations from a single statement in __main__ block."""
+        operations = []
+
+        if isinstance(stmt, ast.Assign):
+            # Handle assignments: a = 1, img = cv2.imread(...)
+            for target in stmt.targets:
+                if isinstance(target, ast.Name):
+                    var_name = target.id
+                    # Check if it's a function call
+                    if isinstance(stmt.value, ast.Call):
+                        ops = self._extract_operations_from_statement(
+                            stmt, type_context, index
+                        )
+                        operations.extend(ops)
+                    else:
+                        # Simple assignment: a = 1, s = "hello"
+                        value_str = ast.unparse(stmt.value)
+
+                        # Skip assignments that are argument processing (sys.argv, len(sys.argv), etc.)
+                        if 'sys.argv' in value_str or var_name == 'image_path':
+                            continue
+
+                        var_type = type_context.get(var_name, TypeHint("auto"))
+                        op = IROperation(
+                            id=f"main_assign_{index}",
+                            op_type=OperationType.ASSIGNMENT,
+                            output=var_name,
+                            output_type_hint=var_type,
+                            args=[value_str],
+                        )
+                        operations.append(op)
+        elif isinstance(stmt, ast.Expr):
+            # Handle expression statements (function calls, print, etc)
+            if isinstance(stmt.value, ast.Call):
+                ops = self._extract_operations_from_statement(stmt, type_context, index)
+                operations.extend(ops)
+        elif isinstance(stmt, ast.If):
+            # Handle if statements
+            ops = self._extract_operations_from_statement(stmt, type_context, index)
+            operations.extend(ops)
+        else:
+            # Try to extract with existing method
+            ops = self._extract_operations_from_statement(stmt, type_context, index)
+            operations.extend(ops)
+
+        return operations
+
+    def _infer_type_from_value(self, value_node: ast.expr) -> TypeHint:
+        """Infer type hint from assignment value."""
+        if isinstance(value_node, ast.Call):
+            # Try to infer from function call
+            if isinstance(value_node.func, ast.Attribute):
+                func_name = value_node.func.attr
+                if func_name in ("imread", "resize", "cvtColor"):
+                    return TypeHint("img::Image")
+            elif isinstance(value_node.func, ast.Name):
+                func_name = value_node.func.id
+                # If it's calling our defined functions, check their return types
+                # For now, assume they return ImageF
+                return TypeHint("img::ImageF")
+
+        # Default type
+        return TypeHint("auto")
