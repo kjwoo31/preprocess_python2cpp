@@ -42,9 +42,20 @@ def create_argument_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--llm-provider",
-        default="vertex",
-        choices=["openai", "anthropic", "vertex"],
-        help="LLM provider (default: vertex = Anthropic via Google Cloud Vertex AI)",
+        default="fallback",
+        choices=["openai", "anthropic", "fallback"],
+        help="LLM provider (default: fallback = OpenAI first, then Anthropic)",
+    )
+    parser.add_argument(
+        "--max-iterations",
+        type=int,
+        default=3,
+        help="Max iterations for compilable solution (default: 3)",
+    )
+    parser.add_argument(
+        "--compile-check",
+        action="store_true",
+        help="Verify LLM-generated code compiles before accepting",
     )
 
     return parser
@@ -92,37 +103,94 @@ def _process_conversions(
     type_engine = TypeInferenceEngine()
     ir_builder = IRBuilder()
 
-    # Get functions called in __main__ block
     main_functions = ast_parser.get_main_block_functions(tree)
-    if args.verbose:
+    functions_to_convert = _select_functions_to_convert(
+        functions, main_functions, args.verbose
+    )
+
+    pipelines = _build_all_pipelines(
+        functions_to_convert, ast_parser, tree, ir_builder, type_engine
+    )
+
+    main_block_operations = _extract_main_block_operations(
+        ast_parser, tree, ir_builder, type_engine, args.verbose
+    )
+
+    project_dir = _generate_and_report_project(
+        generator, pipelines, main_functions, main_block_operations, args
+    )
+
+    _validate_if_requested(
+        project_dir, functions_to_convert, args, Path(args.input).stem
+    )
+
+    return [project_dir]
+
+
+def _select_functions_to_convert(
+    functions: list[str], main_functions: list[str], verbose: bool
+) -> list[str]:
+    """Select which functions to convert based on __main__ block."""
+    if verbose:
         print(f"All functions found: {', '.join(functions)}")
         if main_functions:
             print(f"Functions in __main__ block: {', '.join(main_functions)}")
 
-    # Only convert functions that are called in __main__
-    if main_functions:
-        functions_to_convert = [f for f in functions if f in main_functions]
-        if args.verbose:
-            print(f"Converting only: {', '.join(functions_to_convert)}")
-    else:
-        # If no __main__ block, convert all functions
-        functions_to_convert = functions
+    if not main_functions:
+        return functions
 
+    functions_to_convert = [f for f in functions if f in main_functions]
+    if verbose:
+        print(f"Converting only: {', '.join(functions_to_convert)}")
+
+    return functions_to_convert
+
+
+def _build_all_pipelines(
+    functions_to_convert: list[str],
+    ast_parser: PythonASTParser,
+    tree: ast.Module,
+    ir_builder: IRBuilder,
+    type_engine: TypeInferenceEngine,
+) -> list:
+    """Build IR pipelines for all functions to convert."""
     pipelines = []
     for func_name in functions_to_convert:
         pipeline = ir_builder.build_pipeline(ast_parser, func_name, tree, type_engine)
         pipelines.append(pipeline)
+    return pipelines
 
-    # Get __main__ block operations
+
+def _extract_main_block_operations(
+    ast_parser: PythonASTParser,
+    tree: ast.Module,
+    ir_builder: IRBuilder,
+    type_engine: TypeInferenceEngine,
+    verbose: bool,
+) -> list:
+    """Extract operations from __main__ block."""
     main_block_body = ast_parser.get_main_block_body(tree)
-    main_block_operations = []
-    if main_block_body:
-        main_block_operations = ir_builder.build_main_block_operations(
-            main_block_body, type_engine
-        )
-        if args.verbose:
-            print(f"Main block operations: {len(main_block_operations)}")
+    if not main_block_body:
+        return []
 
+    main_block_operations = ir_builder.build_main_block_operations(
+        main_block_body, type_engine
+    )
+
+    if verbose:
+        print(f"Main block operations: {len(main_block_operations)}")
+
+    return main_block_operations
+
+
+def _generate_and_report_project(
+    generator: CodeGenerator,
+    pipelines: list,
+    main_functions: list[str],
+    main_block_operations: list,
+    args: argparse.Namespace,
+) -> str:
+    """Generate C++ project and print reports."""
     source_file_name = Path(args.input).stem
     project_dir = generator.generate_multi_function(
         pipelines, source_file_name, main_functions, main_block_operations
@@ -135,9 +203,15 @@ def _process_conversions(
             report = generator.generate_report(pipeline)
             print(report)
 
+    return project_dir
+
+
+def _validate_if_requested(
+    project_dir: str, functions_to_convert: list[str], args: argparse.Namespace, source_file_name: str
+) -> None:
+    """Run validation if requested by user."""
     should_validate = not args.no_validate
     if should_validate and args.test_input:
-        # Validate only converted functions
         validate_multi_functions(
             project_dir,
             functions_to_convert,
@@ -146,8 +220,6 @@ def _process_conversions(
             args.verbose,
             source_file_name,
         )
-
-    return [project_dir]
 
 
 def _print_summary(generated_projects: list[str], num_functions: int) -> None:
@@ -323,7 +395,11 @@ def _determine_functions_to_convert(
 def _create_generator(args: argparse.Namespace) -> CodeGenerator:
     """Create code generator from arguments."""
     return CodeGenerator(
-        output_dir=args.output, use_llm=args.llm, llm_provider=args.llm_provider
+        output_dir=args.output,
+        use_llm=args.llm,
+        llm_provider=args.llm_provider,
+        max_iterations=args.max_iterations,
+        compile_check=args.compile_check,
     )
 
 

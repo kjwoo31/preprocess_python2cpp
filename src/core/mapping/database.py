@@ -309,50 +309,52 @@ class MappingDatabase:
     def save_learned_mapping(
         self, mapping: FunctionMapping, learned_file: str | None = None
     ) -> None:
-        """
-        Save a new learned mapping to the config/mappings/learned.yaml file.
-
-        Args:
-            mapping: The mapping to save
-            learned_file: Path to learned mappings file (default: config/mappings/learned.yaml)
-        """
+        """Save a new learned mapping to learned.yaml file."""
         from pathlib import Path
 
-        learned_path: Path
-        if learned_file is None:
-            learned_path = self.config_dir / "mappings" / "learned.yaml"
-        else:
-            learned_path = Path(learned_file)
-
-        # Add to current database
+        learned_path = self._resolve_learned_path(learned_file)
         self.add_mapping(mapping)
+        self._ensure_directory_exists(learned_path)
 
-        # Ensure directory exists
-        if not learned_path.parent.exists():
-            learned_path.parent.mkdir(parents=True, exist_ok=True)
+        data = self._load_existing_mappings(learned_path)
+        mapping_dict = self._create_mapping_dict(mapping)
+        self._upsert_mapping(data, mapping, mapping_dict)
+        self._save_to_yaml(learned_path, data, mapping)
 
-        # Load existing learned mappings
+    def _resolve_learned_path(self, learned_file: str | None) -> Path:
+        """Resolve path to learned mappings file."""
+        from pathlib import Path
+
+        if learned_file is None:
+            return self.config_dir / "mappings" / "learned.yaml"
+        return Path(learned_file)
+
+    def _ensure_directory_exists(self, file_path: Path) -> None:
+        """Create parent directory if it doesn't exist."""
+        if not file_path.parent.exists():
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+
+    def _load_existing_mappings(self, learned_path: Path) -> dict[str, list]:
+        """Load existing learned mappings from YAML file."""
         data: dict[str, list] = {"functions": [], "constants": []}
-        if learned_path.exists():
-            try:
-                with open(learned_path) as f:
-                    loaded_data = yaml.safe_load(f)
-                    if loaded_data:
-                        data = loaded_data
-            except Exception as e:
-                print(f"⚠️  Failed to load existing learned mappings: {e}")
+        if not learned_path.exists():
+            return data
+
+        try:
+            with open(learned_path) as f:
+                loaded_data = yaml.safe_load(f)
+                if loaded_data:
+                    data = loaded_data
+        except Exception as e:
+            print(f"⚠️  Failed to load existing learned mappings: {e}")
 
         if "functions" not in data:
             data["functions"] = []
 
-        # Check if this mapping already exists
-        key = f"{mapping.python_lib}.{mapping.python_func}"
-        existing_idx = -1
-        for i, m in enumerate(data["functions"]):
-            if f"{m['python_lib']}.{m['python_func']}" == key:
-                existing_idx = i
-                break
+        return data
 
+    def _create_mapping_dict(self, mapping: FunctionMapping) -> dict:
+        """Convert FunctionMapping to dictionary for YAML export."""
         mapping_dict = {
             "python_lib": mapping.python_lib,
             "python_func": mapping.python_func,
@@ -363,29 +365,43 @@ class MappingDatabase:
             "notes": mapping.notes + " [LLM-learned]",
         }
 
-        # Add other optional fields if present
-        if mapping.arg_mapping:
-            mapping_dict["arg_mapping"] = mapping.arg_mapping
-        if mapping.custom_template:
-            mapping_dict["custom_template"] = mapping.custom_template
-        if mapping.statements:
-            mapping_dict["statements"] = mapping.statements
-        if mapping.inline_impl:
-            mapping_dict["inline_impl"] = mapping.inline_impl
+        optional_fields = ["arg_mapping", "custom_template", "statements", "inline_impl"]
+        for field in optional_fields:
+            value = getattr(mapping, field)
+            if value:
+                mapping_dict[field] = value
+
+        return mapping_dict
+
+    def _upsert_mapping(
+        self, data: dict[str, list], mapping: FunctionMapping, mapping_dict: dict
+    ) -> None:
+        """Insert or update mapping in data structure."""
+        key = f"{mapping.python_lib}.{mapping.python_func}"
+        existing_idx = self._find_existing_mapping_index(data["functions"], key)
 
         if existing_idx >= 0:
-            # Update existing mapping
             data["functions"][existing_idx] = mapping_dict
         else:
-            # Add new mapping
             data["functions"].append(mapping_dict)
 
-        # Save back to file
+    def _find_existing_mapping_index(self, functions: list, key: str) -> int:
+        """Find index of existing mapping, return -1 if not found."""
+        for i, m in enumerate(functions):
+            if f"{m['python_lib']}.{m['python_func']}" == key:
+                return i
+        return -1
+
+    def _save_to_yaml(
+        self, learned_path: Path, data: dict, mapping: FunctionMapping
+    ) -> None:
+        """Save mappings data to YAML file."""
         try:
             with open(learned_path, "w") as f:
                 yaml.dump(data, f, sort_keys=False, indent=2)
-            print(
-                f"✓ Saved learned mapping to {learned_path.name}: {key} → {mapping.cpp_lib}::{mapping.cpp_func}"
-            )
+
+            key = f"{mapping.python_lib}.{mapping.python_func}"
+            cpp_sig = f"{mapping.cpp_lib}::{mapping.cpp_func}"
+            print(f"✓ Saved learned mapping to {learned_path.name}: {key} → {cpp_sig}")
         except Exception as e:
             print(f"⚠️  Failed to save learned mapping: {e}")

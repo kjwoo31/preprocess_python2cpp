@@ -10,8 +10,8 @@ from .template import TemplateEngine
 try:
     from .llm_provider import (
         AnthropicLLMGenerator,
+        FallbackLLMGenerator,
         LLMCodeGenerator,
-        VertexAILLMGenerator,
     )
 
     HAS_LLM = True
@@ -38,6 +38,8 @@ class CodeGenerator:
         llm_provider: str = "openai",
         llm_api_key: str | None = None,
         save_learned: bool = True,
+        max_iterations: int = 3,
+        compile_check: bool = False,
     ):
         """Initialize code generator."""
         self.output_dir = Path(output_dir)
@@ -45,13 +47,21 @@ class CodeGenerator:
         self.template_engine = TemplateEngine()
         self.save_learned = save_learned
         self.use_llm = use_llm
+        self.compile_check = compile_check
+        self.max_iterations = max_iterations
         self.llm_generator: LLMCodeGenerator | None = None
 
         if use_llm:
-            self._initialize_llm_generator(llm_provider, llm_api_key, save_learned)
+            self._initialize_llm_generator(
+                llm_provider, llm_api_key, save_learned, max_iterations
+            )
 
     def _initialize_llm_generator(
-        self, llm_provider: str, llm_api_key: str | None, save_learned: bool
+        self,
+        llm_provider: str,
+        llm_api_key: str | None,
+        save_learned: bool,
+        max_iterations: int,
     ) -> None:
         """Initialize LLM generator based on provider."""
         if not HAS_LLM:
@@ -61,20 +71,27 @@ class CodeGenerator:
             )
 
         if llm_provider == "openai":
-            self.llm_generator = LLMCodeGenerator(api_key=llm_api_key)
+            self.llm_generator = LLMCodeGenerator(
+                api_key=llm_api_key, max_iterations=max_iterations
+            )
             print(f"✓ LLM integration enabled (OpenAI {self.llm_generator.model})")
         elif llm_provider == "anthropic":
-            self.llm_generator = AnthropicLLMGenerator(api_key=llm_api_key)
+            self.llm_generator = AnthropicLLMGenerator(
+                api_key=llm_api_key, max_iterations=max_iterations
+            )
             print("✓ LLM integration enabled (Anthropic Claude)")
-        elif llm_provider == "vertex":
-            self.llm_generator = VertexAILLMGenerator()
+        elif llm_provider == "fallback":
+            self.llm_generator = FallbackLLMGenerator(max_iterations=max_iterations)
+            print("✓ LLM integration enabled (OpenAI → Anthropic fallback)")
         else:
             raise ValueError(
-                f"Unknown LLM provider: {llm_provider}. Choose: openai, anthropic, or vertex"
+                f"Unknown LLM provider: {llm_provider}. Choose: openai, anthropic, or fallback"
             )
 
         if save_learned:
             print("✓ Auto-save learned mappings enabled")
+        if self.compile_check:
+            print(f"✓ Compile check enabled (max {max_iterations} iterations)")
 
     def generate(self, pipeline: IRPipeline, project_name: str | None = None) -> str:
         """
@@ -183,6 +200,17 @@ class CodeGenerator:
         """Try to generate code for single operation."""
         try:
             if not self.llm_generator:
+                return None
+
+            if self.compile_check:
+                cpp_code, success = self.llm_generator.generate_with_compile_retry(
+                    op, context, compile_check=True
+                )
+                if success and cpp_code:
+                    print("    ✓ Generated and compiled successfully")
+                    if self.save_learned:
+                        self._save_llm_as_mapping(op, cpp_code)
+                    return cpp_code
                 return None
 
             cpp_code = self.llm_generator.generate_cpp_for_operation(op, context)
@@ -324,70 +352,121 @@ class CodeGenerator:
         main_functions: list[str],
         main_block_operations: list,
     ):
-        """Generate C++ source file with multiple functions"""
+        """Generate C++ source file with multiple functions."""
+        collected_data = self._collect_multi_pipeline_data(pipelines)
+        main_mappings = self._build_main_block_mappings(
+            main_block_operations, collected_data["implementations"]
+        )
+
+        context = self._build_multi_cpp_context(
+            project_name,
+            collected_data,
+            main_functions,
+            main_block_operations,
+            main_mappings,
+        )
+
+        self._render_and_save_multi_cpp(context, project_dir, project_name)
+
+    def _collect_multi_pipeline_data(self, pipelines: list[IRPipeline]) -> dict:
+        """Collect headers, libraries, and mappings from all pipelines."""
         all_headers = set()
         all_libs = set()
         all_llm_code = {}
         all_operation_mappings = {}
         all_implementations = set()
-
         pipeline_data = []
 
         for pipeline in pipelines:
-            if self.use_llm:
-                llm_code = self._process_unmapped_operations(pipeline)
-                all_llm_code.update(llm_code)
-
-            headers = self.mapper.get_required_headers(pipeline)
-            all_headers.update(headers)
-
-            libs = self.mapper.get_required_libraries(pipeline)
-            all_libs.update(libs)
-
-            operation_mappings = {}
-            for op in pipeline.operations:
-                mapping = self.mapper.map_operation(op)
-                if mapping:
-                    operation_mappings[op.id] = mapping
-                    if mapping.inline_impl:
-                        all_implementations.add(mapping.inline_impl)
-
-            all_operation_mappings.update(operation_mappings)
-
-            pipeline_data.append(
-                {
-                    "pipeline": pipeline,
-                    "operation_mappings": operation_mappings,
-                }
+            pipe_data = self._process_single_pipeline(
+                pipeline, all_headers, all_libs, all_llm_code,
+                all_operation_mappings, all_implementations
             )
+            pipeline_data.append(pipe_data)
 
-        # Build operation mappings for main block
-        main_block_mappings = {}
-        for op in main_block_operations:
-            mapping = self.mapper.map_operation(op)
-            if mapping:
-                main_block_mappings[op.id] = mapping
-                if mapping.inline_impl:
-                    all_implementations.add(mapping.inline_impl)
-
-        context = {
-            "project_name": project_name,
-            "pipelines": pipeline_data,
-            "main_functions": main_functions,
-            "main_block_operations": main_block_operations,
-            "main_block_mappings": main_block_mappings,
-            "headers": sorted(all_headers),
-            "has_eigen": "Eigen" in all_libs,
-            "has_opencv": "cv" in all_libs,
-            "llm_generated_code": all_llm_code,
-            "all_operation_mappings": all_operation_mappings,
-            "implementations": self.mapper.db.implementations,
-            "all_implementations": all_implementations,
+        return {
+            "headers": all_headers,
+            "libs": all_libs,
+            "llm_code": all_llm_code,
+            "operation_mappings": all_operation_mappings,
+            "implementations": all_implementations,
+            "pipeline_data": pipeline_data,
         }
 
-        cpp_code = self.template_engine.render_cpp_code("cpp/multi.cpp.j2", context)
+    def _process_single_pipeline(
+        self,
+        pipeline: IRPipeline,
+        all_headers: set,
+        all_libs: set,
+        all_llm_code: dict,
+        all_operation_mappings: dict,
+        all_implementations: set,
+    ) -> dict:
+        """Process single pipeline and update aggregated data."""
+        if self.use_llm:
+            llm_code = self._process_unmapped_operations(pipeline)
+            all_llm_code.update(llm_code)
 
+        all_headers.update(self.mapper.get_required_headers(pipeline))
+        all_libs.update(self.mapper.get_required_libraries(pipeline))
+
+        operation_mappings = self._build_operation_mappings(
+            pipeline.operations, all_implementations
+        )
+        all_operation_mappings.update(operation_mappings)
+
+        return {"pipeline": pipeline, "operation_mappings": operation_mappings}
+
+    def _build_operation_mappings(
+        self, operations: list, all_implementations: set
+    ) -> dict:
+        """Build operation mappings and collect implementations."""
+        operation_mappings = {}
+        for op in operations:
+            mapping = self.mapper.map_operation(op)
+            if mapping:
+                operation_mappings[op.id] = mapping
+                if mapping.inline_impl:
+                    all_implementations.add(mapping.inline_impl)
+        return operation_mappings
+
+    def _build_main_block_mappings(
+        self, main_block_operations: list, all_implementations: set
+    ) -> dict:
+        """Build operation mappings for main block."""
+        return self._build_operation_mappings(main_block_operations, all_implementations)
+
+    def _build_multi_cpp_context(
+        self,
+        project_name: str,
+        collected_data: dict,
+        main_functions: list[str],
+        main_block_operations: list,
+        main_mappings: dict,
+    ) -> dict:
+        """Build template context for multi-function C++ generation."""
+        return {
+            "project_name": project_name,
+            "pipelines": collected_data["pipeline_data"],
+            "main_functions": main_functions,
+            "main_block_operations": main_block_operations,
+            "main_block_mappings": main_mappings,
+            "headers": sorted(collected_data["headers"]),
+            "has_eigen": "Eigen" in collected_data["libs"],
+            "has_opencv": "cv" in collected_data["libs"],
+            "llm_generated_code": collected_data["llm_code"],
+            "all_operation_mappings": collected_data["operation_mappings"],
+            "implementations": self.mapper.db.implementations,
+            "all_implementations": collected_data["implementations"],
+        }
+
+    def _render_and_save_multi_cpp(
+        self, context: dict, project_dir: Path, project_name: str
+    ) -> None:
+        """Render template and save multi-function C++ file."""
+        cpp_code = self.template_engine.render_cpp_code("cpp/multi.cpp.j2", context)
         output_file = project_dir / f"{project_name}.cpp"
+
         with open(output_file, "w") as f:
             f.write(cpp_code)
 

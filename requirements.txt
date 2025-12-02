@@ -14,9 +14,8 @@ librosa>=0.10.0
 
 # Optional: LLM support for unmapped operations
 # Uncomment the one you want to use:
-# openai>=1.0.0                 # For GPT-4
-# anthropic>=0.18.0           # For Claude (direct API)
-anthropic[vertex]>=0.18.0   # For Claude via Google Cloud Vertex AI
+# openai>=1.0.0       # For GPT-4
+# anthropic>=0.18.0   # For Claude
 
 # Development and testing
 pytest>=7.4.0

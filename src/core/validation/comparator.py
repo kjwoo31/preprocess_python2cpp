@@ -159,14 +159,7 @@ class ResultComparator:
     def print_comparison(
         self, comparison: dict[str, Any], python_time: float, cpp_time: float
     ):
-        """
-        Print formatted comparison results.
-
-        Args:
-            comparison: Comparison results from compare_outputs
-            python_time: Python execution time in seconds
-            cpp_time: C++ execution time in seconds
-        """
+        """Print formatted comparison results."""
         print("\n" + "=" * 70)
         print("VALIDATION RESULTS")
         print("=" * 70)
@@ -175,16 +168,19 @@ class ResultComparator:
             print(f"❌ Comparison failed: {comparison['error']}")
             return
 
-        # Numerical accuracy
+        self._print_numerical_accuracy(comparison)
+        self._print_performance_stats(python_time, cpp_time)
+        print("\n" + "=" * 70)
+
+    def _print_numerical_accuracy(self, comparison: dict[str, Any]) -> None:
+        """Print numerical accuracy statistics."""
         print("\n📊 Numerical Accuracy:")
         print(f"  Shape: {comparison['shape']}")
         print(f"  Total elements: {comparison['total_elements']:,}")
         print(f"  Match percentage: {comparison['match_percentage']:.2f}%")
 
-        if comparison["is_close"]:
-            print("  Status: ✅ PASSED (within tolerance)")
-        else:
-            print("  Status: ⚠️  DIFFERENCES DETECTED")
+        status = "✅ PASSED (within tolerance)" if comparison["is_close"] else "⚠️  DIFFERENCES DETECTED"
+        print(f"  Status: {status}")
 
         print("\n  Absolute differences:")
         print(f"    Max: {comparison['max_abs_diff']:.6e}")
@@ -196,25 +192,32 @@ class ResultComparator:
 
         if not comparison["dtype_match"]:
             print(
-                f"\n  ⚠️  Dtype mismatch: Python {comparison['python_dtype']} vs C++ {comparison['cpp_dtype']}"
+                f"\n  ⚠️  Dtype mismatch: Python {comparison['python_dtype']} "
+                f"vs C++ {comparison['cpp_dtype']}"
             )
 
-        # Performance comparison
+    def _print_performance_stats(self, python_time: float, cpp_time: float) -> None:
+        """Print performance comparison statistics."""
         print("\n⚡ Performance Comparison:")
         print(f"  Python execution time: {python_time * 1000:.3f} ms")
         print(f"  C++ execution time: {cpp_time * 1000:.3f} ms")
 
-        if cpp_time > 0:
-            speedup = python_time / cpp_time
-            print(f"  Speedup: {speedup:.2f}x")
+        if cpp_time <= 0:
+            return
 
-            if speedup > 1.5:
-                print("  🚀 C++ is significantly faster!")
-            elif speedup > 1.0:
-                print("  ✓ C++ is faster")
-            elif speedup > 0.8:
-                print("  ≈ Similar performance")
-            else:
-                print("  ⚠️  C++ is slower (possible overhead)")
+        speedup = python_time / cpp_time
+        print(f"  Speedup: {speedup:.2f}x")
 
-        print("\n" + "=" * 70)
+        performance_msg = self._get_performance_message(speedup)
+        print(f"  {performance_msg}")
+
+    def _get_performance_message(self, speedup: float) -> str:
+        """Get performance assessment message based on speedup."""
+        if speedup > 1.5:
+            return "🚀 C++ is significantly faster!"
+        elif speedup > 1.0:
+            return "✓ C++ is faster"
+        elif speedup > 0.8:
+            return "≈ Similar performance"
+        else:
+            return "⚠️  C++ is slower (possible overhead)"
